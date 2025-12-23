@@ -29,6 +29,7 @@ public class MedicalRecordController {
     private final AppointmentRepository appointmentRepository;
 
     @PostMapping
+    @SuppressWarnings("null")
     public MedicalRecord createOrUpdateMedicalRecord(@RequestBody MedicalRecordRequest request) {
         Appointment appointment = appointmentRepository.findById(request.getAppointmentId())
                 .orElseThrow(() -> new RuntimeException("Appointment not found"));

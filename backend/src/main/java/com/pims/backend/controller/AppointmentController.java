@@ -43,6 +43,7 @@ public class AppointmentController {
     }
 
     @PostMapping
+    @SuppressWarnings("null")
     public Appointment createAppointment(@RequestBody AppointmentRequest request) {
         Client client = clientRepository.findById(request.getClientId())
                 .orElseThrow(() -> new RuntimeException("Client not found"));
@@ -80,6 +81,7 @@ public class AppointmentController {
     }
 
     @DeleteMapping("/{id}")
+    @SuppressWarnings("null")
     public ResponseEntity<Void> deleteAppointment(@PathVariable Long id) {
         appointmentRepository.deleteById(id);
         return ResponseEntity.noContent().build();

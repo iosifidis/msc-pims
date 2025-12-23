@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -48,6 +49,11 @@ public class Client {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @Column(unique = true)
+    private String afm;
+
+    private String adt;
+
     private String phone;
 
     private String address;
@@ -66,7 +72,7 @@ public class Client {
         }
     }
 
-    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @Builder.Default
     @JsonManagedReference
     @ToString.Exclude

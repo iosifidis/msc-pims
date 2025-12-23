@@ -31,6 +31,7 @@ public class DataInitializer implements CommandLineRunner {
     private final RoleRepository roleRepository;
 
     @Override
+    @SuppressWarnings("null")
     public void run(String... args) throws Exception {
         // Initialize Client and Patient
         if (clientRepository.count() == 0) {
@@ -40,6 +41,8 @@ public class DataInitializer implements CommandLineRunner {
                     .email("giannis.papadopoulos@example.com")
                     .phone("6912345678")
                     .address("Athens, Greece")
+                    .afm("123456789")
+                    .adt("AB123456")
                     .gdprConsent(true)
                     .balance(BigDecimal.ZERO)
                     .build();
@@ -47,6 +50,8 @@ public class DataInitializer implements CommandLineRunner {
             Patient patient = Patient.builder()
                     .name("Rex")
                     .species(Species.DOG)
+                    .microchipNumber("123456789012345")
+                    .isSterilized(true)
                     .client(client)
                     .build();
 
@@ -70,7 +75,7 @@ public class DataInitializer implements CommandLineRunner {
                     .email("house@pims.com")
                     .passwordHash("password") // In a real app, this should be encoded
                     .role(vetRole)
-                    .isActive(true)
+                    //.isActive(true)
                     .build();
 
             appUserRepository.save(vet);

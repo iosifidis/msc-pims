@@ -33,8 +33,17 @@ public class Patient {
     @Column(name = "birth_date")
     private LocalDate birthDate;
 
-    @Column(name = "microchip_number", unique = true)
+    @Column(name = "microchip_number", unique = true, length = 15)
     private String microchipNumber;
+
+    @Column(name = "microchip_date")
+    private LocalDate microchipDate;
+
+    @Column(name = "is_sterilized")
+    private Boolean isSterilized;
+
+    @Column(name = "sterilization_date")
+    private LocalDate sterilizationDate;
 
     private Float weight;
 

@@ -27,6 +27,7 @@ public class InvoiceController {
     private final AppointmentRepository appointmentRepository;
 
     @PostMapping
+    @SuppressWarnings("null")
     public Invoice createInvoice(@RequestBody InvoiceRequest request) {
         Appointment appointment = appointmentRepository.findById(request.getAppointmentId())
                 .orElseThrow(() -> new RuntimeException("Appointment not found"));
