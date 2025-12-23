@@ -77,7 +77,11 @@ public class AppointmentController {
                 .status(AppointmentStatus.SCHEDULED)
                 .build();
 
-        return appointmentRepository.save(appointment);
+        // Save the appointment
+        Appointment savedAppointment = appointmentRepository.save(appointment);
+        
+        // Perform fresh fetch to ensure all EAGER relationships are fully populated
+        return appointmentRepository.findById(savedAppointment.getId()).orElseThrow();
     }
 
     @DeleteMapping("/{id}")

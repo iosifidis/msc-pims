@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 const DashboardHome = () => {
+  const { token } = useAuth();
   const [stats, setStats] = useState({
     totalPatients: 0,
     totalAppointments: 0,
@@ -14,7 +16,12 @@ const DashboardHome = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await axios.get('http://localhost:8080/api/dashboard/stats');
+        const config = {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        };
+        const response = await axios.get('http://localhost:8080/api/dashboard/stats', config);
         setStats(response.data);
         setLoading(false);
       } catch (err) {
@@ -24,91 +31,55 @@ const DashboardHome = () => {
       }
     };
 
-    fetchStats();
-  }, []);
+    if (token) {
+        fetchStats();
+    } else {
+        setLoading(false);
+    }
+  }, [token]);
 
   if (loading) {
-    return <div style={{ padding: '20px', textAlign: 'center' }}>Loading dashboard...</div>;
+    return <div className="p-4 text-center text-gray-600">Loading dashboard...</div>;
   }
 
   if (error) {
-    return <div style={{ padding: '20px', color: 'red', textAlign: 'center' }}>{error}</div>;
+    return <div className="p-4 text-center text-red-600">{error}</div>;
   }
 
-  const containerStyle = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '20px',
-    padding: '20px'
-  };
-
-  const cardStyle = {
-    backgroundColor: '#fff',
-    borderRadius: '8px',
-    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-    padding: '20px',
-    textAlign: 'center',
-    border: '1px solid #e0e0e0'
-  };
-
-  const titleStyle = {
-    margin: '0 0 10px 0',
-    color: '#666',
-    fontSize: '1rem',
-    fontWeight: 'bold'
-  };
-
-  const valueStyle = {
-    margin: '0',
-    fontSize: '2rem',
-    fontWeight: 'bold',
-    color: '#333'
-  };
-
-  const iconStyle = {
-    fontSize: '2.5rem',
-    marginBottom: '10px',
-    display: 'block'
-  };
-
   return (
-    <div className="dashboard-home">
-      <h2 style={{ paddingLeft: '20px', marginBottom: '10px' }}>Dashboard Overview</h2>
-      <div style={containerStyle}>
+    <div className="p-6">
+      <h2 className="text-2xl font-bold text-gray-800 mb-6">Dashboard Overview</h2>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Total Patients Card */}
-        <div style={cardStyle}>
-          <span style={iconStyle}>👥</span>
-          <h3 style={titleStyle}>Total Patients</h3>
-          <p style={valueStyle}>{stats.totalPatients}</p>
+        <div className="bg-white rounded-lg shadow-md p-6 text-center border border-gray-200 hover:shadow-lg transition-shadow duration-200">
+          <span className="text-4xl mb-2 block">👥</span>
+          <h3 className="text-gray-500 font-bold text-sm uppercase tracking-wider mb-2">Total Patients</h3>
+          <p className="text-3xl font-bold text-gray-800">{stats.totalPatients}</p>
         </div>
 
         {/* Total Appointments Card */}
-        <div style={cardStyle}>
-          <span style={iconStyle}>📅</span>
-          <h3 style={titleStyle}>Total Appointments</h3>
-          <p style={valueStyle}>{stats.totalAppointments}</p>
+        <div className="bg-white rounded-lg shadow-md p-6 text-center border border-gray-200 hover:shadow-lg transition-shadow duration-200">
+          <span className="text-4xl mb-2 block">📅</span>
+          <h3 className="text-gray-500 font-bold text-sm uppercase tracking-wider mb-2">Total Appointments</h3>
+          <p className="text-3xl font-bold text-gray-800">{stats.totalAppointments}</p>
         </div>
 
         {/* Today's Appointments Card */}
-        <div style={{
-          ...cardStyle,
-          border: stats.appointmentsToday > 0 ? '2px solid #28a745' : cardStyle.border
-        }}>
-          <span style={iconStyle}>⏰</span>
-          <h3 style={{...titleStyle, color: stats.appointmentsToday > 0 ? '#28a745' : titleStyle.color}}>
+        <div className={`bg-white rounded-lg shadow-md p-6 text-center border hover:shadow-lg transition-shadow duration-200 ${stats.appointmentsToday > 0 ? 'border-green-500 ring-1 ring-green-500' : 'border-gray-200'}`}>
+          <span className="text-4xl mb-2 block">⏰</span>
+          <h3 className={`font-bold text-sm uppercase tracking-wider mb-2 ${stats.appointmentsToday > 0 ? 'text-green-600' : 'text-gray-500'}`}>
             Today's Appointments
           </h3>
-          <p style={{...valueStyle, color: stats.appointmentsToday > 0 ? '#28a745' : valueStyle.color}}>
-            {stats.appointmentsToday}
-          </p>
+          <p className="text-3xl font-bold text-gray-800">{stats.appointmentsToday}</p>
         </div>
 
         {/* Total Revenue Card */}
-        <div style={cardStyle}>
-          <span style={iconStyle}>💶</span>
-          <h3 style={titleStyle}>Total Revenue</h3>
-          <p style={{...valueStyle, color: '#007bff'}}>
-            {new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR' }).format(stats.totalRevenue)}
+        <div className="bg-white rounded-lg shadow-md p-6 text-center border border-gray-200 hover:shadow-lg transition-shadow duration-200">
+          <span className="text-4xl mb-2 block">💰</span>
+          <h3 className="text-gray-500 font-bold text-sm uppercase tracking-wider mb-2">Total Revenue</h3>
+          <p className="text-3xl font-bold text-gray-800">
+            ${stats.totalRevenue ? stats.totalRevenue.toLocaleString() : '0'}
           </p>
         </div>
       </div>

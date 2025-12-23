@@ -1,5 +1,6 @@
 package com.pims.backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.pims.backend.enums.AppointmentStatus;
 import com.pims.backend.enums.AppointmentType;
 import jakarta.persistence.*;
@@ -45,16 +46,19 @@ public class Appointment {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "client_id", nullable = false)
+    @JsonIgnoreProperties({"patients", "appointments"})
     private Client client;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "patient_id", nullable = false)
+    @JsonIgnoreProperties({"client", "alerts", "appointments"})
     private Patient patient;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "vet_id")
+    @JsonIgnoreProperties({"appointments", "password"})
     private AppUser vet;
 
     @ManyToOne(fetch = FetchType.LAZY)

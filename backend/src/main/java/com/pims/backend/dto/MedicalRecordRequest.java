@@ -1,5 +1,7 @@
 package com.pims.backend.dto;
 
+import java.math.BigDecimal;
+
 import lombok.Data;
 
 @Data
@@ -9,4 +11,5 @@ public class MedicalRecordRequest {
     private String objective;
     private String assessment;
     private String plan;
+    private BigDecimal cost;
 }

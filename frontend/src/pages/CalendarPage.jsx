@@ -1,13 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
-import format from 'date-fns/format';
-import parse from 'date-fns/parse';
-import startOfWeek from 'date-fns/startOfWeek';
-import getDay from 'date-fns/getDay';
-import enUS from 'date-fns/locale/en-US';
+import { format, parse, startOfWeek, getDay } from 'date-fns';
+import { enUS } from 'date-fns/locale';
 import axios from 'axios';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { useAuth } from '../context/AuthContext';
+import MedicalRecordModal from '../components/MedicalRecordModal';
 
 const locales = {
   'en-US': enUS,
@@ -22,7 +20,7 @@ const localizer = dateFnsLocalizer({
 });
 
 const CalendarPage = () => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -30,8 +28,8 @@ const CalendarPage = () => {
   const [date, setDate] = useState(new Date());
   const [view, setView] = useState('month');
   
-  // Modal State
-  const [showModal, setShowModal] = useState(false);
+  // Create Appointment Modal State
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState({ start: null, end: null });
   
   // Form Data State
@@ -42,6 +40,9 @@ const CalendarPage = () => {
   const [selectedVet, setSelectedVet] = useState(user?.id || '');
   const [appointmentType, setAppointmentType] = useState('EXAM');
   const [notes, setNotes] = useState('');
+
+  // Medical Record Modal State
+  const [selectedEventForRecord, setSelectedEventForRecord] = useState(null);
   
   // Derived State
   const availablePatients = selectedClient 
@@ -50,7 +51,10 @@ const CalendarPage = () => {
 
   const fetchAppointments = useCallback(async () => {
     try {
-      const response = await axios.get('http://localhost:8080/api/appointments');
+      const config = {
+        headers: { Authorization: `Bearer ${token}` }
+      };
+      const response = await axios.get('http://localhost:8080/api/appointments', config);
       const formattedEvents = response.data.map(appt => ({
         id: appt.id,
         title: `[${appt.type}] ${appt.patient?.name || 'Unknown'} (${appt.client?.lastName || 'Unknown'})`,
@@ -65,20 +69,21 @@ const CalendarPage = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [token]);
 
   const fetchFormData = useCallback(async () => {
     try {
+      const config = {
+        headers: { Authorization: `Bearer ${token}` }
+      };
       const [clientsRes, vetsRes] = await Promise.all([
-        axios.get('http://localhost:8080/api/clients'),
-        axios.get('http://localhost:8080/api/users/vets').catch(() => ({ data: [] })) // Fallback if endpoint doesn't exist
+        axios.get('http://localhost:8080/api/clients', config),
+        axios.get('http://localhost:8080/api/users/vets', config).catch(() => ({ data: [] }))
       ]);
       setClients(clientsRes.data);
       setVets(vetsRes.data);
       
-      // If we have vets and no selected vet, default to first one or current user
       if (vetsRes.data.length > 0 && !selectedVet) {
-         // If current user is in the list, select them, otherwise first one
          const currentUserIsVet = vetsRes.data.find(v => v.id === user?.id);
          setSelectedVet(currentUserIsVet ? user.id : vetsRes.data[0].id);
       } else if (!selectedVet && user) {
@@ -87,31 +92,33 @@ const CalendarPage = () => {
     } catch (error) {
       console.error('Error fetching form data:', error);
     }
-  }, [selectedVet, user]);
+  }, [selectedVet, user, token]);
 
   useEffect(() => {
-    fetchAppointments();
-    fetchFormData();
-  }, [fetchAppointments, fetchFormData]);
+    if (token) {
+        fetchAppointments();
+        fetchFormData();
+    }
+  }, [fetchAppointments, fetchFormData, token]);
 
   const eventPropGetter = (event) => {
-    let backgroundColor = '#3174ad'; // Default blue
+    let backgroundColor = '#3174ad';
 
     switch (event.type) {
       case 'SURGERY':
-        backgroundColor = '#d32f2f'; // Red
+        backgroundColor = '#d32f2f';
         break;
       case 'EXAM':
-        backgroundColor = '#1976d2'; // Blue
+        backgroundColor = '#1976d2';
         break;
       case 'VACCINATION':
-        backgroundColor = '#2e7d32'; // Green
+        backgroundColor = '#2e7d32';
         break;
       case 'GROOMING':
-        backgroundColor = '#ed6c02'; // Orange
+        backgroundColor = '#ed6c02';
         break;
       default:
-        backgroundColor = '#757575'; // Grey
+        backgroundColor = '#757575';
     }
 
     return {
@@ -126,26 +133,21 @@ const CalendarPage = () => {
     };
   };
 
-  const handleSelectSlot = ({ start, end }) => {
+  const handleSelectSlot = (slotInfo) => {
+    console.log('Slot clicked', slotInfo);
+    const { start, end } = slotInfo;
     setSelectedSlot({ start, end });
-    setShowModal(true);
-    // Reset form fields
+    setShowCreateModal(true);
     setSelectedClient('');
     setSelectedPatient('');
     setAppointmentType('EXAM');
     setNotes('');
-    // Keep vet as is (default or previously selected)
   };
 
   const handleSelectEvent = (event) => {
-    alert(`
-      Appointment Details:
-      Patient: ${event.resource.patient?.name}
-      Owner: ${event.resource.client?.firstName} ${event.resource.client?.lastName}
-      Type: ${event.type}
-      Time: ${event.start.toLocaleString()} - ${event.end.toLocaleString()}
-      Notes: ${event.resource.notes || 'None'}
-    `);
+    console.log('Event clicked', event);
+    console.log('Event resource:', event.resource);
+    setSelectedEventForRecord(event.resource);
   };
 
   const handleSaveAppointment = async () => {
@@ -165,9 +167,12 @@ const CalendarPage = () => {
     };
 
     try {
-      await axios.post('http://localhost:8080/api/appointments', payload);
-      setShowModal(false);
-      fetchAppointments(); // Refresh calendar
+      const config = {
+        headers: { Authorization: `Bearer ${token}` }
+      };
+      await axios.post('http://localhost:8080/api/appointments', payload, config);
+      setShowCreateModal(false);
+      fetchAppointments();
       alert('Appointment created successfully!');
     } catch (error) {
       console.error('Error creating appointment:', error);
@@ -179,51 +184,134 @@ const CalendarPage = () => {
     return <div className="p-4 text-center">Loading calendar...</div>;
   }
 
+  const modalOverlayStyle = {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    zIndex: 10000,
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center'
+  };
+
+  const modalContentStyle = {
+    backgroundColor: 'white',
+    padding: '24px',
+    borderRadius: '8px',
+    width: '450px',
+    maxWidth: '90%',
+    maxHeight: '90vh',
+    overflowY: 'auto',
+    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)'
+  };
+
+  const fieldStyle = {
+    marginBottom: '16px'
+  };
+
+  const labelStyle = {
+    display: 'block',
+    fontSize: '14px',
+    fontWeight: '500',
+    color: '#374151',
+    marginBottom: '4px'
+  };
+
+  const inputStyle = {
+    width: '100%',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
+    padding: '8px',
+    fontSize: '14px'
+  };
+
+  const disabledInputStyle = {
+    ...inputStyle,
+    backgroundColor: '#f3f4f6',
+    cursor: 'not-allowed'
+  };
+
+  const buttonContainerStyle = {
+    marginTop: '24px',
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '12px'
+  };
+
+  const cancelButtonStyle = {
+    padding: '8px 16px',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
+    backgroundColor: 'white',
+    color: '#374151',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '500'
+  };
+
+  const saveButtonStyle = {
+    padding: '8px 16px',
+    border: 'none',
+    borderRadius: '6px',
+    backgroundColor: '#2563eb',
+    color: 'white',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '500'
+  };
+
   return (
-    <div className="h-screen p-4 bg-white rounded-lg shadow relative">
-      <h2 className="text-2xl font-bold text-gray-800 mb-4">Appointment Calendar</h2>
-      <div style={{ height: 'calc(100vh - 150px)' }}>
-        <Calendar
-          localizer={localizer}
-          events={events}
-          startAccessor="start"
-          endAccessor="end"
-          style={{ height: '100%' }}
-          eventPropGetter={eventPropGetter}
-          onSelectSlot={handleSelectSlot}
-          onSelectEvent={handleSelectEvent}
-          selectable
-          popup
-          date={date}
-          view={view}
-          onNavigate={setDate}
-          onView={setView}
-        />
+    <>
+      <div className="p-4 bg-white rounded-lg shadow" style={{ position: 'relative', zIndex: 1 }}>
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">Appointment Calendar</h2>
+        <div style={{ height: '600px' }}>
+          <Calendar
+            localizer={localizer}
+            events={events}
+            startAccessor="start"
+            endAccessor="end"
+            style={{ height: '100%' }}
+            eventPropGetter={eventPropGetter}
+            onSelectSlot={handleSelectSlot}
+            onSelectEvent={handleSelectEvent}
+            selectable={true}
+            popup
+            date={date}
+            view={view}
+            onNavigate={setDate}
+            onView={setView}
+          />
+        </div>
       </div>
 
       {/* Create Appointment Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
-            <h3 className="text-xl font-bold mb-4 text-gray-800">New Appointment</h3>
+      {showCreateModal && (
+        <div style={modalOverlayStyle}>
+          <div style={modalContentStyle}>
+            <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px', color: '#1f2937' }}>
+              New Appointment
+            </h3>
             
-            <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-2">
+            <div style={{ marginBottom: '16px', fontSize: '14px', color: '#6b7280' }}>
+              <p style={{ margin: 0 }}>
                 <strong>Time:</strong> {selectedSlot.start?.toLocaleString()} - {selectedSlot.end?.toLocaleTimeString()}
               </p>
             </div>
 
-            <div className="space-y-4">
+            <div>
               {/* Client Select */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Client</label>
                 <select
                   value={selectedClient}
                   onChange={(e) => {
                     setSelectedClient(e.target.value);
-                    setSelectedPatient(''); // Reset patient when client changes
+                    setSelectedPatient('');
                   }}
-                  className="w-full border border-gray-300 rounded-md p-2"
+                  style={inputStyle}
                 >
                   <option value="">Select Client</option>
                   {clients.map(client => (
@@ -235,13 +323,13 @@ const CalendarPage = () => {
               </div>
 
               {/* Patient Select */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Patient</label>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Patient</label>
                 <select
                   value={selectedPatient}
                   onChange={(e) => setSelectedPatient(e.target.value)}
                   disabled={!selectedClient}
-                  className="w-full border border-gray-300 rounded-md p-2 disabled:bg-gray-100"
+                  style={!selectedClient ? disabledInputStyle : inputStyle}
                 >
                   <option value="">Select Patient</option>
                   {availablePatients.map(patient => (
@@ -253,12 +341,12 @@ const CalendarPage = () => {
               </div>
 
               {/* Vet Select */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Veterinarian</label>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Veterinarian</label>
                 <select
                   value={selectedVet}
                   onChange={(e) => setSelectedVet(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md p-2"
+                  style={inputStyle}
                 >
                   <option value="">Select Vet</option>
                   {vets.length > 0 ? (
@@ -268,19 +356,18 @@ const CalendarPage = () => {
                       </option>
                     ))
                   ) : (
-                    // Fallback if no vets loaded but we have current user
                     user && <option value={user.id}>{user.username} (Current)</option>
                   )}
                 </select>
               </div>
 
               {/* Type Select */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Type</label>
                 <select
                   value={appointmentType}
                   onChange={(e) => setAppointmentType(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md p-2"
+                  style={inputStyle}
                 >
                   <option value="EXAM">Exam</option>
                   <option value="SURGERY">Surgery</option>
@@ -291,27 +378,27 @@ const CalendarPage = () => {
               </div>
 
               {/* Notes */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Notes</label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md p-2"
+                  style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }}
                   rows="3"
                 ></textarea>
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end space-x-3">
+            <div style={buttonContainerStyle}>
               <button
-                onClick={() => setShowModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                onClick={() => setShowCreateModal(false)}
+                style={cancelButtonStyle}
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveAppointment}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                style={saveButtonStyle}
               >
                 Save Appointment
               </button>
@@ -319,7 +406,20 @@ const CalendarPage = () => {
           </div>
         </div>
       )}
-    </div>
+
+      {/* Medical Record Modal */}
+      {selectedEventForRecord && (
+        <MedicalRecordModal
+          appointmentId={selectedEventForRecord.id}
+          patientId={selectedEventForRecord.resource?.patient?.id}
+          patientName={selectedEventForRecord.resource?.patient?.name || 'Unknown Patient'}
+          onClose={() => {
+            console.log('Closing Medical Record Modal');
+            setSelectedEventForRecord(null);
+          }}
+        />
+      )}
+    </>
   );
 };
 
