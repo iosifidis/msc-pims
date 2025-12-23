@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -86,5 +87,10 @@ public class Client {
     public void removePatient(Patient patient) {
         patients.remove(patient);
         patient.setClient(null);
+    }
+
+    @JsonProperty("petCount")
+    public int getPetCount() {
+        return patients != null ? patients.size() : 0;
     }
 }

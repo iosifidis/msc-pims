@@ -47,6 +47,10 @@ public class Patient {
 
     private Float weight;
 
+    @Builder.Default
+    @Column(name = "is_deceased")
+    private Boolean isDeceased = false;
+
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

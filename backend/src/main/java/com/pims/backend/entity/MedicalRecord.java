@@ -44,6 +44,25 @@ public class MedicalRecord {
     @Column(columnDefinition = "TEXT")
     private String plan;
 
+    // Vital Signs Fields
+    @Column(name = "weight")
+    private Double weight; // in Kg
+
+    @Column(name = "temperature")
+    private Double temperature; // in Celsius
+
+    @Column(name = "heart_rate")
+    private Integer heartRate; // in bpm
+
+    @Column(name = "respiratory_rate")
+    private Integer respiratoryRate; // in bpm
+
+    @Column(name = "mucous_membranes")
+    private String mucousMembranes; // e.g., "Pink", "Pale"
+
+    @Column(name = "crt")
+    private Double crt; // Capillary Refill Time in seconds
+
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "appointment_id", nullable = false, unique = true)
     private Appointment appointment;

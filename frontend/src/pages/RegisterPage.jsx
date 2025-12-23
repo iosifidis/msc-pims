@@ -7,13 +7,12 @@ const RegisterPage = () => {
   const { register } = useAuth();
   
   const [formData, setFormData] = useState({
-    fullName: "",
+    firstname: "",
+    lastname: "",
     email: "",
     username: "",
     password: "",
-    role: "SECRETARY", // Default role
-    licenseId: "",
-    afm: ""
+    role: "SECRETARY" // Default role
   });
   
   const [error, setError] = useState("");
@@ -31,196 +30,186 @@ const RegisterPage = () => {
     setError("");
     
     try {
-      await register(formData);
+      // Prepare payload matching backend DTO
+      const payload = {
+        firstname: formData.firstname,
+        lastname: formData.lastname,
+        email: formData.email,
+        username: formData.username,
+        password: formData.password,
+        role: formData.role
+      };
+      
+      console.log("Sending registration payload:", payload);
+      await register(payload);
       navigate("/login");
     } catch (err) {
-      setError("Registration failed. Please try again.");
+      console.error("Registration error:", err);
+      console.error("Error response data:", err.response?.data);
+      setError(err.response?.data?.message || "Registration failed. Please try again.");
     }
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h2 style={styles.title}>Register for PIMS</h2>
-        {error && <div style={styles.error}>{error}</div>}
-        
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Full Name</label>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 py-12">
+      <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+        {/* Header */}
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold text-blue-600 mb-2">PIMS</h1>
+          <p className="text-gray-600 text-sm">Create Your Account</p>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded mb-4 text-sm text-center">
+            {error}
+          </div>
+        )}
+
+        {/* Registration Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* First Name */}
+          <div>
+            <label 
+              htmlFor="firstname" 
+              className="block text-sm font-medium text-gray-700"
+            >
+              First Name
+            </label>
             <input
               type="text"
-              name="fullName"
-              value={formData.fullName}
+              id="firstname"
+              name="firstname"
+              value={formData.firstname}
               onChange={handleChange}
-              style={styles.input}
+              className="w-full border border-gray-300 p-2 rounded mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter your first name"
               required
             />
           </div>
 
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Email</label>
+          {/* Last Name */}
+          <div>
+            <label 
+              htmlFor="lastname" 
+              className="block text-sm font-medium text-gray-700"
+            >
+              Last Name
+            </label>
             <input
-              type="email"
-              name="email"
-              value={formData.email}
+              type="text"
+              id="lastname"
+              name="lastname"
+              value={formData.lastname}
               onChange={handleChange}
-              style={styles.input}
+              className="w-full border border-gray-300 p-2 rounded mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter your last name"
               required
             />
           </div>
 
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Username</label>
+          {/* Username */}
+          <div>
+            <label 
+              htmlFor="username" 
+              className="block text-sm font-medium text-gray-700"
+            >
+              Username
+            </label>
             <input
               type="text"
+              id="username"
               name="username"
               value={formData.username}
               onChange={handleChange}
-              style={styles.input}
+              className="w-full border border-gray-300 p-2 rounded mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Choose a username"
               required
             />
           </div>
 
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Password</label>
+          {/* Email */}
+          <div>
+            <label 
+              htmlFor="email" 
+              className="block text-sm font-medium text-gray-700"
+            >
+              Email
+            </label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="w-full border border-gray-300 p-2 rounded mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="your.email@example.com"
+              required
+            />
+          </div>
+
+          {/* Password */}
+          <div>
+            <label 
+              htmlFor="password" 
+              className="block text-sm font-medium text-gray-700"
+            >
+              Password
+            </label>
             <input
               type="password"
+              id="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
-              style={styles.input}
+              className="w-full border border-gray-300 p-2 rounded mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Create a strong password"
               required
             />
           </div>
 
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Role</label>
+          {/* Role Select */}
+          <div>
+            <label 
+              htmlFor="role" 
+              className="block text-sm font-medium text-gray-700"
+            >
+              Role
+            </label>
             <select
+              id="role"
               name="role"
               value={formData.role}
               onChange={handleChange}
-              style={styles.select}
+              className="w-full border border-gray-300 p-2 rounded mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
             >
               <option value="SECRETARY">Secretary</option>
               <option value="VET">Veterinarian</option>
-              <option value="OWNER">Owner</option>
+              <option value="ADMIN">Administrator</option>
             </select>
           </div>
 
-          {formData.role === "VET" && (
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>GEOTEE License ID</label>
-              <input
-                type="text"
-                name="licenseId"
-                value={formData.licenseId}
-                onChange={handleChange}
-                style={styles.input}
-                required
-              />
-            </div>
-          )}
-
-          {formData.role === "OWNER" && (
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>AFM (Tax ID)</label>
-              <input
-                type="text"
-                name="afm"
-                value={formData.afm}
-                onChange={handleChange}
-                style={styles.input}
-                required
-              />
-            </div>
-          )}
-
-          <button type="submit" style={styles.button}>Register</button>
+          {/* Register Button */}
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white p-2 rounded mt-4 hover:bg-blue-700 font-medium transition-colors"
+          >
+            Create Account
+          </button>
         </form>
-        
-        <p style={styles.footerText}>
-          Already have an account? <Link to="/login">Login here</Link>
-        </p>
+
+        {/* Footer */}
+        <div className="text-center mt-6">
+          <p className="text-sm text-gray-600">
+            Already have an account?{" "}
+            <Link to="/login" className="text-blue-600 hover:underline font-medium">
+              Login here
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
-};
-
-const styles = {
-  container: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    minHeight: "100vh",
-    backgroundColor: "#f0f2f5",
-    padding: "20px 0",
-  },
-  card: {
-    width: "100%",
-    maxWidth: "500px",
-    padding: "2rem",
-    backgroundColor: "white",
-    borderRadius: "8px",
-    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-  },
-  title: {
-    textAlign: "center",
-    marginBottom: "1.5rem",
-    color: "#333",
-  },
-  error: {
-    backgroundColor: "#ffebee",
-    color: "#c62828",
-    padding: "0.75rem",
-    borderRadius: "4px",
-    marginBottom: "1rem",
-    textAlign: "center",
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-  },
-  inputGroup: {
-    marginBottom: "1rem",
-  },
-  label: {
-    display: "block",
-    marginBottom: "0.5rem",
-    color: "#555",
-  },
-  input: {
-    width: "100%",
-    padding: "0.75rem",
-    border: "1px solid #ddd",
-    borderRadius: "4px",
-    fontSize: "1rem",
-    boxSizing: "border-box",
-  },
-  select: {
-    width: "100%",
-    padding: "0.75rem",
-    border: "1px solid #ddd",
-    borderRadius: "4px",
-    fontSize: "1rem",
-    backgroundColor: "white",
-    boxSizing: "border-box",
-  },
-  button: {
-    width: "100%",
-    padding: "0.75rem",
-    backgroundColor: "#2e7d32", // Green for register
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    fontSize: "1rem",
-    cursor: "pointer",
-    marginTop: "1rem",
-  },
-  footerText: {
-    textAlign: "center",
-    marginTop: "1rem",
-    color: "#666",
-  },
 };
 
 export default RegisterPage;

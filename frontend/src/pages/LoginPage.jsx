@@ -21,108 +21,73 @@ const LoginPage = () => {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h2 style={styles.title}>Login to PIMS</h2>
-        {error && <div style={styles.error}>{error}</div>}
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.inputGroup}>
-            <label htmlFor="username" style={styles.label}>Username</label>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+        {/* Header */}
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold text-blue-600 mb-2">PIMS</h1>
+          <p className="text-gray-600 text-sm">Veterinary Clinic Management System</p>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded mb-4 text-sm text-center">
+            {error}
+          </div>
+        )}
+
+        {/* Login Form */}
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+              Username
+            </label>
             <input
               type="text"
               id="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              style={styles.input}
+              className="w-full border border-gray-300 p-2 rounded mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter your username"
               required
             />
           </div>
-          <div style={styles.inputGroup}>
-            <label htmlFor="password" style={styles.label}>Password</label>
+
+          <div className="mb-4">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              Password
+            </label>
             <input
               type="password"
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              style={styles.input}
+              className="w-full border border-gray-300 p-2 rounded mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter your password"
               required
             />
           </div>
-          <button type="submit" style={styles.button}>Login</button>
+
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white p-2 rounded mt-4 hover:bg-blue-700 font-medium transition-colors"
+          >
+            Sign In
+          </button>
         </form>
-        <p style={styles.footerText}>
-          Don't have an account? <Link to="/register">Register here</Link>
-        </p>
+
+        {/* Footer */}
+        <div className="text-center mt-6">
+          <p className="text-sm text-gray-600">
+            Don't have an account?{" "}
+            <Link to="/register" className="text-blue-600 hover:underline font-medium">
+              Register here
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
-};
-
-const styles = {
-  container: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    height: "100vh",
-    backgroundColor: "#f0f2f5",
-  },
-  card: {
-    width: "100%",
-    maxWidth: "400px",
-    padding: "2rem",
-    backgroundColor: "white",
-    borderRadius: "8px",
-    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-  },
-  title: {
-    textAlign: "center",
-    marginBottom: "1.5rem",
-    color: "#333",
-  },
-  error: {
-    backgroundColor: "#ffebee",
-    color: "#c62828",
-    padding: "0.75rem",
-    borderRadius: "4px",
-    marginBottom: "1rem",
-    textAlign: "center",
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-  },
-  inputGroup: {
-    marginBottom: "1rem",
-  },
-  label: {
-    display: "block",
-    marginBottom: "0.5rem",
-    color: "#555",
-  },
-  input: {
-    width: "100%",
-    padding: "0.75rem",
-    border: "1px solid #ddd",
-    borderRadius: "4px",
-    fontSize: "1rem",
-    boxSizing: "border-box",
-  },
-  button: {
-    width: "100%",
-    padding: "0.75rem",
-    backgroundColor: "#1976d2",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    fontSize: "1rem",
-    cursor: "pointer",
-    marginTop: "1rem",
-  },
-  footerText: {
-    textAlign: "center",
-    marginTop: "1rem",
-    color: "#666",
-  },
 };
 
 export default LoginPage;

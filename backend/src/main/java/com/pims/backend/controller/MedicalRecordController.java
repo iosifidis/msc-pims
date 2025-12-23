@@ -51,6 +51,13 @@ public class MedicalRecordController {
             medicalRecord.setObjective(request.getObjective());
             medicalRecord.setAssessment(request.getAssessment());
             medicalRecord.setPlan(request.getPlan());
+            // Update vital signs
+            medicalRecord.setWeight(request.getWeight());
+            medicalRecord.setTemperature(request.getTemperature());
+            medicalRecord.setHeartRate(request.getHeartRate());
+            medicalRecord.setRespiratoryRate(request.getRespiratoryRate());
+            medicalRecord.setMucousMembranes(request.getMucousMembranes());
+            medicalRecord.setCrt(request.getCrt());
         } else {
             // Create new record - linked to Appointment (which contains Patient reference)
             medicalRecord = MedicalRecord.builder()
@@ -59,6 +66,13 @@ public class MedicalRecordController {
                     .objective(request.getObjective())
                     .assessment(request.getAssessment())
                     .plan(request.getPlan())
+                    // Vital signs
+                    .weight(request.getWeight())
+                    .temperature(request.getTemperature())
+                    .heartRate(request.getHeartRate())
+                    .respiratoryRate(request.getRespiratoryRate())
+                    .mucousMembranes(request.getMucousMembranes())
+                    .crt(request.getCrt())
                     .build();
         }
 
@@ -97,6 +111,15 @@ public class MedicalRecordController {
     @GetMapping("/patient/{patientId}")
     public List<MedicalRecord> getMedicalRecordsByPatient(@PathVariable Long patientId) {
         return medicalRecordRepository.findByAppointment_Patient_IdOrderByCreatedAtDesc(patientId);
+    }
+
+    /**
+     * Get all medical records for patients owned by a specific client
+     * GET /api/medical-records/client/{clientId}
+     */
+    @GetMapping("/client/{clientId}")
+    public List<MedicalRecord> getMedicalRecordsByClientId(@PathVariable Long clientId) {
+        return medicalRecordRepository.findByAppointment_Patient_Client_IdOrderByCreatedAtDesc(clientId);
     }
 
     @GetMapping
