@@ -17,5 +17,5 @@ public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, Lo
     List<MedicalRecord> findByAppointment_Patient_IdOrderByCreatedAtDesc(Long patientId);
     
     // Find all medical records for patients owned by a specific client
-    List<MedicalRecord> findByAppointment_Patient_Client_IdOrderByCreatedAtDesc(Long clientId);
+    List<MedicalRecord> findByAppointment_Patient_Owner_IdOrderByCreatedAtDesc(Long ownerId);
 }

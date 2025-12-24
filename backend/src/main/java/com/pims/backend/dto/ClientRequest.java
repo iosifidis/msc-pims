@@ -11,8 +11,17 @@ public class ClientRequest {
     private String afm;
     private String adt;
     private String phone;
+    private String phoneNumber; // Alternative field name from frontend
     private String address;
     private Boolean gdprConsent;
+    
+    // Helper method to get phone regardless of which field was sent
+    public String getPhoneValue() {
+        if (phoneNumber != null && !phoneNumber.trim().isEmpty()) {
+            return phoneNumber;
+        }
+        return phone;
+    }
     
     // Initial Pet fields (optional)
     private String petName;

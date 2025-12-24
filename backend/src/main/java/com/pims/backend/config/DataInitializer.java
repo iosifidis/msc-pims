@@ -52,10 +52,10 @@ public class DataInitializer implements CommandLineRunner {
                     .species(Species.DOG)
                     .microchipNumber("123456789012345")
                     .isSterilized(true)
-                    .client(client)
+                    .owner(client)
                     .build();
 
-            client.setPatients(List.of(patient));
+            client.setPets(List.of(patient));
 
             clientRepository.save(client);
             System.out.println("Dummy data initialized: Client 'Giannis Papadopoulos' with Patient 'Rex'");

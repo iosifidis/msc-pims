@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -62,6 +63,9 @@ public class ClientController {
     @PostMapping
     @SuppressWarnings("null")
     public ResponseEntity<Client> createClient(@RequestBody ClientRequest request) {
+        // Handle phone - explicitly check phoneNumber first (frontend field), then phone
+        String phoneValue = request.getPhoneNumber() != null ? request.getPhoneNumber() : request.getPhone();
+        
         // Step 1: Build and save the Client entity
         Client client = Client.builder()
                 .firstName(request.getFirstName())
@@ -69,7 +73,7 @@ public class ClientController {
                 .email(request.getEmail())
                 .afm(request.getAfm())
                 .adt(request.getAdt())
-                .phone(request.getPhone())
+                .phone(phoneValue) // Use resolved phone value
                 .address(request.getAddress())
                 .gdprConsent(request.getGdprConsent())
                 .build();
@@ -104,7 +108,7 @@ public class ClientController {
                     .species(species)
                     .breed(request.getPetBreed())
                     .sex(sex)
-                    .client(savedClient)
+                    .owner(savedClient)
                     .build();
             
             patientRepository.save(patient);
@@ -122,6 +126,51 @@ public class ClientController {
     public ResponseEntity<Void> deleteClient(@PathVariable Long id) {
         clientRepository.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Update Client
+     * PUT /api/clients/{id}
+     */
+    @PutMapping("/{id}")
+    @SuppressWarnings("null")
+    public ResponseEntity<Client> updateClient(
+            @PathVariable Long id,
+            @RequestBody ClientRequest request) {
+        
+        Client client = clientRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Client not found with id: " + id));
+        
+        // Update all fields
+        if (request.getFirstName() != null) {
+            client.setFirstName(request.getFirstName());
+        }
+        if (request.getLastName() != null) {
+            client.setLastName(request.getLastName());
+        }
+        if (request.getEmail() != null) {
+            client.setEmail(request.getEmail());
+        }
+        if (request.getAfm() != null) {
+            client.setAfm(request.getAfm());
+        }
+        if (request.getAdt() != null) {
+            client.setAdt(request.getAdt());
+        }
+        // Handle phone - explicitly check phoneNumber first (frontend field), then phone
+        String newPhone = request.getPhoneNumber() != null ? request.getPhoneNumber() : request.getPhone();
+        if (newPhone != null) {
+            client.setPhone(newPhone);
+        }
+        if (request.getAddress() != null) {
+            client.setAddress(request.getAddress());
+        }
+        if (request.getGdprConsent() != null) {
+            client.setGdprConsent(request.getGdprConsent());
+        }
+        
+        Client updatedClient = clientRepository.save(client);
+        return ResponseEntity.ok(updatedClient);
     }
 
     /**
@@ -171,7 +220,7 @@ public class ClientController {
                 .isSterilized(request.getIsSterilized())
                 .sterilizationDate(request.getSterilizationDate())
                 .weight(request.getWeight())
-                .client(client)
+                .owner(client)
                 .build();
         
         // Step 5: Save the Patient

@@ -10,5 +10,5 @@ import com.pims.backend.entity.Patient;
 @Repository
 public interface PatientRepository extends JpaRepository<Patient, Long> {
     // Find all patients by client/owner ID
-    List<Patient> findByClientId(Long clientId);
+    List<Patient> findByOwnerId(Long ownerId);
 }

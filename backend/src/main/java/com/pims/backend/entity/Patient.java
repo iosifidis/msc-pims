@@ -59,11 +59,11 @@ public class Patient {
     @Enumerated(EnumType.STRING)
     private Sex sex;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "client_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "client_id")
     @JsonBackReference
     @ToString.Exclude
-    private Client client;
+    private Client owner;
 
     @OneToMany(mappedBy = "patient", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

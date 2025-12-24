@@ -115,11 +115,11 @@ public class MedicalRecordController {
 
     /**
      * Get all medical records for patients owned by a specific client
-     * GET /api/medical-records/client/{clientId}
+     * GET /api/medical-records/owner/{ownerId}
      */
-    @GetMapping("/client/{clientId}")
-    public List<MedicalRecord> getMedicalRecordsByClientId(@PathVariable Long clientId) {
-        return medicalRecordRepository.findByAppointment_Patient_Client_IdOrderByCreatedAtDesc(clientId);
+    @GetMapping("/owner/{ownerId}")
+    public List<MedicalRecord> getMedicalRecordsByOwnerId(@PathVariable Long ownerId) {
+        return medicalRecordRepository.findByAppointment_Patient_Owner_IdOrderByCreatedAtDesc(ownerId);
     }
 
     @GetMapping

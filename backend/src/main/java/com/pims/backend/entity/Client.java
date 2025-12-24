@@ -55,6 +55,7 @@ public class Client {
 
     private String adt;
 
+    @JsonProperty("phoneNumber") // Serialize as phoneNumber for frontend compatibility
     private String phone;
 
     private String address;
@@ -73,24 +74,24 @@ public class Client {
         }
     }
 
-    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @Builder.Default
     @JsonManagedReference
     @ToString.Exclude
-    private List<Patient> patients = new ArrayList<>();
+    private List<Patient> pets = new ArrayList<>();
 
     public void addPatient(Patient patient) {
-        patients.add(patient);
-        patient.setClient(this);
+        pets.add(patient);
+        patient.setOwner(this);
     }
 
     public void removePatient(Patient patient) {
-        patients.remove(patient);
-        patient.setClient(null);
+        pets.remove(patient);
+        patient.setOwner(null);
     }
 
     @JsonProperty("petCount")
     public int getPetCount() {
-        return patients != null ? patients.size() : 0;
+        return pets != null ? pets.size() : 0;
     }
 }
