@@ -1,23 +1,31 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
-import { format, parse, startOfWeek, getDay, isToday, isThisWeek, startOfDay } from 'date-fns';
-import { enUS } from 'date-fns/locale';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
+import { isToday, isThisWeek } from 'date-fns';
 import axios from 'axios';
-import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { useAuth } from '../context/AuthContext';
 import MedicalRecordModal from '../components/MedicalRecordModal';
 
-const locales = {
-  'en-US': enUS,
-};
+// ============================================
+// CONSTANTS & HELPERS
+// ============================================
+const APPOINTMENT_TYPES = [
+    { value: 'EXAM', label: 'Exam', color: '#3b82f6' },
+    { value: 'SURGERY', label: 'Surgery', color: '#ef4444' },
+    { value: 'VACCINATION', label: 'Vaccination', color: '#e11d48' },
+    { value: 'GROOMING', label: 'Grooming', color: '#f97316' },
+    { value: 'CHECKUP', label: 'Check-up', color: '#a855f7' },
+    { value: 'EMERGENCY', label: 'Emergency', color: '#dc2626' },
+];
 
-const localizer = dateFnsLocalizer({
-  format,
-  parse,
-  startOfWeek,
-  getDay,
-  locales,
-});
+// Helper to preserve local time in ISO string
+const toLocalISOString = (date) => {
+    if (!date) return null;
+    const offset = date.getTimezoneOffset() * 60000;
+    return new Date(date.getTime() - offset).toISOString().slice(0, 19);
+};
 
 const DashboardPage = () => {
   const { user, token } = useAuth();
@@ -31,10 +39,6 @@ const DashboardPage = () => {
     totalPatients: 0,
     totalRevenue: 0
   });
-  
-  // Calendar Navigation State
-  const [date, setDate] = useState(new Date());
-  const [view, setView] = useState('month');
   
   // Create Appointment Modal State
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -57,29 +61,70 @@ const DashboardPage = () => {
     ? clients.find(c => c.id === parseInt(selectedClient))?.patients || []
     : [];
 
+  // ============================================
+  // DATA FETCHING
+  // ============================================
   const fetchAppointments = useCallback(async () => {
+    // Robust User Check: If user isn't ready, don't fetch, but don't crash.
+    if (!user) return;
+
     try {
       const config = {
         headers: { Authorization: `Bearer ${token}` }
       };
       const response = await axios.get('http://localhost:8080/api/appointments', config);
-      const formattedEvents = response.data.map(appt => ({
-        id: appt.id,
-        title: `[${appt.type}] ${appt.patient?.name || 'Unknown'} (${appt.client?.lastName || 'Unknown'})`,
-        start: new Date(appt.startTime),
-        end: new Date(appt.endTime),
-        resource: appt,
-        type: appt.type
-      }));
+      
+      // Safe Filtering Logic: Check appt.vet exists before accessing .id
+      const filteredAppointments = response.data.filter(appt => {
+          const vetId = appt.vet?.id;
+          const userId = user?.id;
+          return vetId && userId && String(vetId) === String(userId);
+      });
+
+      const formattedEvents = filteredAppointments.map(appt => {
+        // Color Logic matching AppointmentsPage
+        let backgroundColor = '#3b82f6'; // Default Blue
+        let borderColor = '#3b82f6';
+
+        if (appt.status === 'COMPLETED') {
+            backgroundColor = '#16a34a'; // Green
+            borderColor = '#16a34a';
+        } else {
+             const typeConfig = APPOINTMENT_TYPES.find(t => t.value === appt.type);
+             if (typeConfig) {
+                 backgroundColor = typeConfig.color;
+                 borderColor = typeConfig.color;
+             }
+        }
+
+        return {
+            id: appt.id,
+            title: `[${appt.type}] ${appt.patient?.name || 'Unknown'} (${appt.client?.lastName || 'Unknown'})`,
+            start: toLocalISOString(new Date(appt.startTime)),
+            end: toLocalISOString(new Date(appt.endTime)),
+            allDay: false,
+            backgroundColor,
+            borderColor,
+            extendedProps: {
+                client: appt.client,
+                patient: appt.patient,
+                vet: appt.vet,
+                type: appt.type,
+                status: appt.status,
+                notes: appt.notes
+            }
+        };
+      });
+      
       setEvents(formattedEvents);
       
-      // Calculate stats
+      // Calculate stats based on filtered events
       const todayCount = formattedEvents.filter(event => 
-        isToday(event.start)
+        isToday(new Date(event.start))
       ).length;
       
       const weekCount = formattedEvents.filter(event => 
-        isThisWeek(event.start, { weekStartsOn: 1 })
+        isThisWeek(new Date(event.start), { weekStartsOn: 1 })
       ).length;
       
       setStats(prev => ({
@@ -93,7 +138,7 @@ const DashboardPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, user]);
 
   const fetchDashboardStats = useCallback(async () => {
     try {
@@ -125,7 +170,7 @@ const DashboardPage = () => {
       setVets(vetsRes.data);
       
       if (vetsRes.data.length > 0 && !selectedVet) {
-         const currentUserIsVet = vetsRes.data.find(v => v.id === user?.id);
+         const currentUserIsVet = vetsRes.data.find(v => String(v.id) === String(user?.id));
          setSelectedVet(currentUserIsVet ? user.id : vetsRes.data[0].id);
       } else if (!selectedVet && user) {
           setSelectedVet(user.id);
@@ -136,49 +181,18 @@ const DashboardPage = () => {
   }, [selectedVet, user, token]);
 
   useEffect(() => {
-    if (token) {
+    if (token && user) {
         fetchAppointments();
         fetchDashboardStats();
         fetchFormData();
     }
-  }, [fetchAppointments, fetchDashboardStats, fetchFormData, token]);
+  }, [fetchAppointments, fetchDashboardStats, fetchFormData, token, user]);
 
-  const eventPropGetter = (event) => {
-    let backgroundColor = '#3174ad';
-
-    switch (event.type) {
-      case 'SURGERY':
-        backgroundColor = '#d32f2f';
-        break;
-      case 'EXAM':
-        backgroundColor = '#1976d2';
-        break;
-      case 'VACCINATION':
-        backgroundColor = '#2e7d32';
-        break;
-      case 'GROOMING':
-        backgroundColor = '#ed6c02';
-        break;
-      default:
-        backgroundColor = '#757575';
-    }
-
-    return {
-      style: {
-        backgroundColor,
-        borderRadius: '4px',
-        opacity: 0.8,
-        color: 'white',
-        border: '0px',
-        display: 'block'
-      }
-    };
-  };
-
-  const handleSelectSlot = (slotInfo) => {
-    console.log('Slot clicked', slotInfo);
-    const { start, end } = slotInfo;
-    setSelectedSlot({ start, end });
+  // ============================================
+  // HANDLERS
+  // ============================================
+  const handleDateSelect = (selectInfo) => {
+    setSelectedSlot({ start: selectInfo.start, end: selectInfo.end });
     setShowCreateModal(true);
     setSelectedClient('');
     setSelectedPatient('');
@@ -186,10 +200,14 @@ const DashboardPage = () => {
     setNotes('');
   };
 
-  const handleSelectEvent = (event) => {
-    console.log('Event clicked', event);
-    console.log('Event resource:', event.resource);
-    setSelectedEventForRecord(event.resource);
+  const handleEventClick = (clickInfo) => {
+    const event = clickInfo.event;
+    // Map FullCalendar event props back to resource structure for modal
+    const resource = {
+        id: event.id,
+        ...event.extendedProps
+    };
+    setSelectedEventForRecord(resource);
   };
 
   const handleSaveAppointment = async () => {
@@ -231,6 +249,9 @@ const DashboardPage = () => {
     );
   }
 
+  // ============================================
+  // STYLES
+  // ============================================
   const modalOverlayStyle = {
     position: 'fixed',
     top: 0,
@@ -255,66 +276,18 @@ const DashboardPage = () => {
     boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)'
   };
 
-  const fieldStyle = {
-    marginBottom: '16px'
-  };
-
-  const labelStyle = {
-    display: 'block',
-    fontSize: '14px',
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: '4px'
-  };
-
-  const inputStyle = {
-    width: '100%',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    padding: '8px',
-    fontSize: '14px'
-  };
-
-  const disabledInputStyle = {
-    ...inputStyle,
-    backgroundColor: '#f3f4f6',
-    cursor: 'not-allowed'
-  };
-
-  const buttonContainerStyle = {
-    marginTop: '24px',
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: '12px'
-  };
-
-  const cancelButtonStyle = {
-    padding: '8px 16px',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    backgroundColor: 'white',
-    color: '#374151',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '500'
-  };
-
-  const saveButtonStyle = {
-    padding: '8px 16px',
-    border: 'none',
-    borderRadius: '6px',
-    backgroundColor: '#2563eb',
-    color: 'white',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '500'
-  };
+  const fieldStyle = { marginBottom: '16px' };
+  const labelStyle = { display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' };
+  const inputStyle = { width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '8px', fontSize: '14px' };
+  const disabledInputStyle = { ...inputStyle, backgroundColor: '#f3f4f6', cursor: 'not-allowed' };
+  const buttonContainerStyle = { marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '12px' };
+  const cancelButtonStyle = { padding: '8px 16px', border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: 'white', color: '#374151', cursor: 'pointer', fontSize: '14px', fontWeight: '500' };
+  const saveButtonStyle = { padding: '8px 16px', border: 'none', borderRadius: '6px', backgroundColor: '#2563eb', color: 'white', cursor: 'pointer', fontSize: '14px', fontWeight: '500' };
 
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Today's Appointments */}
         <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
           <div className="flex items-center justify-between">
             <div>
@@ -324,8 +297,6 @@ const DashboardPage = () => {
             <div className="text-4xl">📅</div>
           </div>
         </div>
-
-        {/* This Week's Appointments */}
         <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
           <div className="flex items-center justify-between">
             <div>
@@ -335,8 +306,6 @@ const DashboardPage = () => {
             <div className="text-4xl">📊</div>
           </div>
         </div>
-
-        {/* Total Patients */}
         <div className="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
           <div className="flex items-center justify-between">
             <div>
@@ -346,8 +315,6 @@ const DashboardPage = () => {
             <div className="text-4xl">🐾</div>
           </div>
         </div>
-
-        {/* Total Revenue */}
         <div className="bg-white rounded-lg shadow p-6 border-l-4 border-yellow-500">
           <div className="flex items-center justify-between">
             <div>
@@ -361,23 +328,30 @@ const DashboardPage = () => {
 
       {/* Calendar Section */}
       <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Appointment Calendar</h2>
-        <div style={{ height: '600px', position: 'relative', zIndex: 1 }}>
-          <Calendar
-            localizer={localizer}
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">My Schedule</h2>
+        <div style={{ height: '600px' }}>
+          <FullCalendar
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            initialView="timeGridWeek"
+            headerToolbar={{
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            }}
             events={events}
-            startAccessor="start"
-            endAccessor="end"
-            style={{ height: '100%' }}
-            eventPropGetter={eventPropGetter}
-            onSelectSlot={handleSelectSlot}
-            onSelectEvent={handleSelectEvent}
             selectable={true}
-            popup
-            date={date}
-            view={view}
-            onNavigate={setDate}
-            onView={setView}
+            selectMirror={true}
+            dayMaxEvents={true}
+            weekends={true}
+            select={handleDateSelect}
+            eventClick={handleEventClick}
+            slotMinTime="07:00:00"
+            slotMaxTime="20:00:00"
+            allDaySlot={false}
+            slotDuration="00:30:00"
+            height="100%"
+            eventDisplay="block"
+            nowIndicator={true}
           />
         </div>
       </div>
@@ -506,12 +480,9 @@ const DashboardPage = () => {
       {selectedEventForRecord && (
         <MedicalRecordModal
           appointmentId={selectedEventForRecord.id}
-          patientId={selectedEventForRecord.resource?.patient?.id}
-          patientName={selectedEventForRecord.resource?.patient?.name || 'Unknown Patient'}
-          onClose={() => {
-            console.log('Closing Medical Record Modal');
-            setSelectedEventForRecord(null);
-          }}
+          patientId={selectedEventForRecord.patient?.id}
+          patientName={selectedEventForRecord.patient?.name || 'Unknown Patient'}
+          onClose={() => setSelectedEventForRecord(null)}
         />
       )}
     </div>

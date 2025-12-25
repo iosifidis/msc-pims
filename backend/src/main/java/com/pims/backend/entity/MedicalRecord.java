@@ -9,6 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
@@ -32,40 +33,28 @@ public class MedicalRecord {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(columnDefinition = "TEXT")
-    private String subjective;
-
-    @Column(columnDefinition = "TEXT")
-    private String objective;
-
-    @Column(columnDefinition = "TEXT")
-    private String assessment;
-
-    @Column(columnDefinition = "TEXT")
-    private String plan;
-
-    // Vital Signs Fields
     @Column(name = "weight")
     private Double weight; // in Kg
 
     @Column(name = "temperature")
     private Double temperature; // in Celsius
 
-    @Column(name = "heart_rate")
-    private Integer heartRate; // in bpm
+    @Column(columnDefinition = "TEXT")
+    private String symptoms;
 
-    @Column(name = "respiratory_rate")
-    private Integer respiratoryRate; // in bpm
+    @Column(columnDefinition = "TEXT")
+    private String diagnosis;
 
-    @Column(name = "mucous_membranes")
-    private String mucousMembranes; // e.g., "Pink", "Pale"
-
-    @Column(name = "crt")
-    private Double crt; // Capillary Refill Time in seconds
+    @Column(columnDefinition = "TEXT")
+    private String treatment;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "appointment_id", nullable = false, unique = true)
     private Appointment appointment;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "patient_id")
+    private Patient patient;
 
     @PrePersist
     protected void onCreate() {

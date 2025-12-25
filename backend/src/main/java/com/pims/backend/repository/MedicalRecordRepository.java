@@ -11,11 +11,5 @@ import com.pims.backend.entity.MedicalRecord;
 @Repository
 public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, Long> {
     Optional<MedicalRecord> findByAppointmentId(Long appointmentId);
-
-    List<MedicalRecord> findByAppointment_PatientIdOrderByCreatedAtDesc(Long patientId);
-    
-    List<MedicalRecord> findByAppointment_Patient_IdOrderByCreatedAtDesc(Long patientId);
-    
-    // Find all medical records for patients owned by a specific client
-    List<MedicalRecord> findByAppointment_Patient_Owner_IdOrderByCreatedAtDesc(Long ownerId);
+    List<MedicalRecord> findByPatientId(Long patientId);
 }

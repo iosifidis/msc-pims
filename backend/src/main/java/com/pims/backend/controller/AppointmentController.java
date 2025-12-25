@@ -1,9 +1,9 @@
 package com.pims.backend.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,7 +31,6 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/appointments")
-@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 @RequiredArgsConstructor
 public class AppointmentController {
 
@@ -168,13 +167,11 @@ public class AppointmentController {
     }
 
     @PutMapping("/{id}/status")
-    public ResponseEntity<Appointment> updateAppointmentStatus(@PathVariable Long id, @RequestParam AppointmentStatus status) {
-        return appointmentRepository.findById(id)
-                .map(appointment -> {
-                    appointment.setStatus(status);
-                    return ResponseEntity.ok(appointmentRepository.save(appointment));
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<Appointment> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> payload) {
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Appointment not found"));
+        appointment.setStatus(AppointmentStatus.valueOf(payload.get("status")));
+        return ResponseEntity.ok(appointmentRepository.save(appointment));
     }
 
     @DeleteMapping("/{id}")
