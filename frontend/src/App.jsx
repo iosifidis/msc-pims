@@ -6,7 +6,7 @@ import "react-big-calendar/lib/css/react-big-calendar.css";
 // Page Imports
 import DashboardPage from "./pages/DashboardPage";
 import ClientsPage from './pages/ClientsPage';
-import CalendarPage from "./pages/CalendarPage";
+import AppointmentsPage from "./pages/AppointmentsPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 
@@ -43,7 +43,7 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<MainLayout><Outlet /></MainLayout>}>
               <Route path="/" element={<DashboardPage />} />
-              <Route path="/calendar" element={<CalendarPage />} />
+              <Route path="/appointments" element={<AppointmentsPage />} />
               <Route path="/clients" element={<ClientsPage />} />
               <Route path="/patients" element={<PatientsPage />} />
               <Route path="/financials" element={<FinancialsPage />} />

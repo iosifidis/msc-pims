@@ -15,5 +15,6 @@ public class AppointmentRequest {
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private String notes;
+    private String reason;
     private AppointmentType type;
 }

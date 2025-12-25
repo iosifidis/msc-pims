@@ -13,7 +13,7 @@ const MainLayout = ({ children }) => {
 
   const navItems = [
     { name: "Dashboard", path: "/", icon: "📊" },
-    { name: "Calendar", path: "/calendar", icon: "📅" },
+    { name: "Appointments", path: "/appointments", icon: "📅" },
     { name: "Clients", path: "/clients", icon: "👥" },
     { name: "Patients", path: "/patients", icon: "🐾" },
     { name: "Financials", path: "/financials", icon: "💰" },

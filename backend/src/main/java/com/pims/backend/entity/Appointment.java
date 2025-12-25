@@ -46,14 +46,17 @@ public class Appointment {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    @Column(length = 255)
+    private String reason;
+
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "client_id", nullable = false)
-    @JsonIgnoreProperties({"patients", "appointments"})
+    @JsonIgnoreProperties({"pets", "appointments"})
     private Client client;
 
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "patient_id", nullable = false)
-    @JsonIgnoreProperties({"client", "alerts", "appointments"})
+    @JsonIgnoreProperties({"owner", "alerts", "appointments"})
     private Patient patient;
 
     @ManyToOne(fetch = FetchType.EAGER)
