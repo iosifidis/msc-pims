@@ -12,7 +12,6 @@ const RegisterPage = () => {
     email: "",
     username: "",
     password: "",
-    role: "SECRETARY" // Default role
   });
   
   const [error, setError] = useState("");
@@ -37,7 +36,7 @@ const RegisterPage = () => {
         email: formData.email,
         username: formData.username,
         password: formData.password,
-        role: formData.role
+        role: "VET"
       };
       
       console.log("Sending registration payload:", payload);
@@ -166,27 +165,6 @@ const RegisterPage = () => {
               placeholder="Create a strong password"
               required
             />
-          </div>
-
-          {/* Role Select */}
-          <div>
-            <label 
-              htmlFor="role" 
-              className="block text-sm font-medium text-gray-700"
-            >
-              Role
-            </label>
-            <select
-              id="role"
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              className="w-full border border-gray-300 p-2 rounded mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="SECRETARY">Secretary</option>
-              <option value="VET">Veterinarian</option>
-              <option value="ADMIN">Administrator</option>
-            </select>
           </div>
 
           {/* Register Button */}

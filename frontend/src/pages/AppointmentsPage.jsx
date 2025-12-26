@@ -508,8 +508,11 @@ const AppointmentsPage = () => {
         endTime: ''
     });
 
+    // Expired Logic: End time is in the past AND status is SCHEDULED
+    const isExpired = formData.status === 'SCHEDULED' && formData.endTime && new Date(formData.endTime) < new Date();
+
     // Check if appointment is completed (locked/read-only)
-    const isLocked = formData.status === 'COMPLETED';
+    const isLocked = formData.status === 'COMPLETED' || isExpired;
 
     // ============================================
     // DATA FETCHING
@@ -524,18 +527,22 @@ const AppointmentsPage = () => {
                 // Determine color based on status first, then type
                 let backgroundColor = typeConfig.color;
                 let borderColor = typeConfig.color;
+                
+                const start = new Date(appt.startTime);
+                const end = appt.endTime ? new Date(appt.endTime) : new Date(start.getTime() + 30 * 60000);
+                const isExpired = end < new Date() && appt.status === 'SCHEDULED';
 
                 if (appt.status === 'COMPLETED') {
                     backgroundColor = '#16a34a'; // Green
                     borderColor = '#16a34a';
+                } else if (isExpired) {
+                    backgroundColor = '#6b7280'; // Gray
+                    borderColor = '#6b7280';
                 }
 
-                // Calculate duration for fallback
-                const start = new Date(appt.startTime);
-                const end = appt.endTime ? new Date(appt.endTime) : new Date(start.getTime() + 30 * 60000);
                 return {
                     id: appt.id,
-                    title: `${appt.client?.firstName || ''} ${appt.client?.lastName || ''} - ${appt.patient?.name || ''}`,
+                    title: `${appt.client?.firstName || ''} ${appt.client?.lastName || ''} - ${appt.patient?.name || ''}${isExpired ? ' (No Show)' : ''}`,
                     start: toLocalISOString(start),
                     end: toLocalISOString(end),
                     allDay: false,
@@ -791,10 +798,18 @@ const AppointmentsPage = () => {
             newEnd = new Date(newStart.getTime() + duration);
         }
         
+        // Drag & Drop Logic: Reactivate if moving to future
+        const isFuture = newStart > new Date();
+        let statusOverride = undefined;
+        if (isFuture && event.extendedProps.status === 'SCHEDULED') {
+            statusOverride = 'SCHEDULED';
+        }
+
         // Use helper to construct payload with flat IDs
         const payload = formatPayload(event, {
             startTime: newStart,
-            endTime: newEnd
+            endTime: newEnd,
+            status: statusOverride
         });
 
         try {
@@ -962,8 +977,18 @@ const AppointmentsPage = () => {
             setShowModal(false);
             setShowExamModal(true);
         } catch (error) {
-            console.error("Error fetching medical record:", error);
-            alert("Failed to load medical record. It may not exist yet.");
+            // Handle 404: Open in Create Mode
+            if (error.response && error.response.status === 404) {
+                setExamInitialData(null);
+                setExamAppointment(selectedAppointment);
+                setIsExamReadOnly(false);
+                setIsEditingHistory(false);
+                setShowModal(false);
+                setShowExamModal(true);
+            } else {
+                console.error("Error fetching medical record:", error);
+                alert("Failed to load medical record.");
+            }
         }
     };
 
@@ -1275,11 +1300,16 @@ const AppointmentsPage = () => {
                             <div className="ml-8">
                                 <div className="flex items-center gap-3">
                                     <h2 className="text-2xl font-bold text-gray-900">
-                                        {isLocked ? 'Medical Record' : (isEditMode ? 'Edit Appointment' : 'New Appointment')}
+                                        {formData.status === 'COMPLETED' ? 'Medical Record' : (isExpired ? 'Appointment Expired' : (isEditMode ? 'Edit Appointment' : 'New Appointment'))}
                                     </h2>
-                                    {isLocked && (
+                                    {formData.status === 'COMPLETED' && (
                                         <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-bold rounded-full uppercase">
                                             🔒 Completed
+                                        </span>
+                                    )}
+                                    {isExpired && (
+                                        <span className="px-3 py-1 bg-gray-100 text-gray-800 text-xs font-bold rounded-full uppercase">
+                                            ⚠️ Expired
                                         </span>
                                     )}
                                 </div>
@@ -1304,6 +1334,14 @@ const AppointmentsPage = () => {
 
                         {/* Modal Body */}
                         <div className="py-6 overflow-y-auto flex-1">
+                            {isExpired && (
+                                <div className="mb-6 p-4 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 rounded-r-md">
+                                    <p className="font-bold flex items-center gap-2">
+                                        <span className="text-xl">⚠️</span> This appointment has passed.
+                                    </p>
+                                    <p className="mt-1 ml-8 text-sm">Drag and drop it to a future time/date on the calendar to reactivate it.</p>
+                                </div>
+                            )}
                             <div className="grid grid-cols-2 gap-6">
                                 {/* Start Time */}
                                 <div>
@@ -1473,14 +1511,16 @@ const AppointmentsPage = () => {
                             <div className="flex gap-3">
                                 {selectedAppointment?.id && (
                                     <>
-                                        <button
+                                        {!isExpired && (
+                                            <button
                                             onClick={handleDelete}
                                             className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-bold transition-colors"
                                             disabled={isLocked}
                                         >
                                             Delete
-                                        </button>
-                                        {isLocked ? (
+                                            </button>
+                                        )}
+                                        {!isExpired && (isLocked ? (
                                             <button
                                                 onClick={handleViewRecord}
                                                 className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md font-bold transition-colors"
@@ -1494,7 +1534,7 @@ const AppointmentsPage = () => {
                                             >
                                                 Examine
                                             </button>
-                                        )}
+                                        ))}
                                         <button
                                             onClick={handleHistory}
                                             className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md font-bold transition-colors"
@@ -1513,13 +1553,15 @@ const AppointmentsPage = () => {
                                 >
                                     Cancel
                                 </button>
-                                <button
-                                    onClick={handleSave}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-bold transition-colors"
-                                    disabled={isLocked}
-                                >
-                                    {selectedAppointment?.id ? 'Update' : 'Save'}
-                                </button>
+                                {!isExpired && (
+                                    <button
+                                        onClick={handleSave}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-bold transition-colors"
+                                        disabled={isLocked}
+                                    >
+                                        {selectedAppointment?.id ? 'Update' : 'Save'}
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>

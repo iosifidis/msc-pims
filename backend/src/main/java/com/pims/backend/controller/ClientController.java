@@ -1,232 +1,93 @@
 package com.pims.backend.controller;
 
-import java.util.List;
-
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import com.pims.backend.dto.ClientRequest;
-import com.pims.backend.dto.PatientRequest;
 import com.pims.backend.entity.Client;
 import com.pims.backend.entity.Patient;
 import com.pims.backend.enums.Sex;
 import com.pims.backend.enums.Species;
 import com.pims.backend.repository.ClientRepository;
 import com.pims.backend.repository.PatientRepository;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
-import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/clients")
-@RequiredArgsConstructor
 public class ClientController {
 
     private final ClientRepository clientRepository;
     private final PatientRepository patientRepository;
 
-    /**
-     * Get all clients with their pets
-     * Pets are loaded via EAGER fetch type
-     */
+    public ClientController(ClientRepository clientRepository, PatientRepository patientRepository) {
+        this.clientRepository = clientRepository;
+        this.patientRepository = patientRepository;
+    }
+
     @GetMapping
-    @Transactional
     public List<Client> getAllClients() {
-        // EAGER fetch ensures pets are loaded
         return clientRepository.findAll();
     }
 
-    /**
-     * Get a single client by ID with their pets
-     * GET /api/clients/{id}
-     */
-    @GetMapping("/{id}")
-    @SuppressWarnings("null")
-    public ResponseEntity<Client> getClientById(@PathVariable Long id) {
-        return clientRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    /**
-     * Create Client with optional initial Pet
-     * Supports creating a client and their first pet in a single step
-     */
     @PostMapping
-    @SuppressWarnings("null")
     public ResponseEntity<Client> createClient(@RequestBody ClientRequest request) {
-        // Handle phone - explicitly check phoneNumber first (frontend field), then phone
-        String phoneValue = request.getPhoneNumber() != null ? request.getPhoneNumber() : request.getPhone();
-        
-        // Step 1: Build and save the Client entity
-        Client client = Client.builder()
-                .firstName(request.getFirstName())
-                .lastName(request.getLastName())
-                .email(request.getEmail())
-                .afm(request.getAfm())
-                .adt(request.getAdt())
-                .phone(phoneValue) // Use resolved phone value
-                .address(request.getAddress())
-                .gdprConsent(request.getGdprConsent())
-                .build();
-        
+        // Create new Client instance and set fields manually
+        Client client = new Client();
+        client.setFirstName(request.getFirstName());
+        client.setLastName(request.getLastName());
+        client.setEmail(request.getEmail());
+        client.setPhone(request.getPhoneNumber());
+        client.setAddress(request.getAddress());
+
         Client savedClient = clientRepository.save(client);
-        
-        // Step 2: Create initial Pet if petName is provided
-        if (request.getPetName() != null && !request.getPetName().trim().isEmpty()) {
-            // Parse species enum
-            Species species = Species.OTHER; // default
-            if (request.getPetSpecies() != null) {
-                try {
-                    species = Species.valueOf(request.getPetSpecies().toUpperCase());
-                } catch (IllegalArgumentException e) {
-                    // Keep default if invalid
-                }
-            }
-            
-            // Parse sex enum
-            Sex sex = null;
-            if (request.getPetSex() != null) {
-                try {
-                    sex = Sex.valueOf(request.getPetSex().toUpperCase());
-                } catch (IllegalArgumentException e) {
-                    // Keep null if invalid
-                }
-            }
-            
-            // Build and save Patient
-            Patient patient = Patient.builder()
-                    .name(request.getPetName())
-                    .species(species)
-                    .breed(request.getPetBreed())
-                    .sex(sex)
-                    .owner(savedClient)
-                    .build();
-            
-            patientRepository.save(patient);
-        }
-        
-        // Return the saved client (will include the new pet due to EAGER fetch)
-        return new ResponseEntity<>(clientRepository.findById(savedClient.getId()).orElseThrow(), HttpStatus.CREATED);
+        return ResponseEntity.ok(savedClient);
     }
 
-    /**
-     * Delete Client (cascade deletes all associated Pets and Appointments)
-     */
-    @DeleteMapping("/{id}")
-    @SuppressWarnings("null")
-    public ResponseEntity<Void> deleteClient(@PathVariable Long id) {
-        clientRepository.deleteById(id);
-        return ResponseEntity.noContent().build();
+    @PostMapping("/{clientId}/patients")
+    public ResponseEntity<Patient> addPatient(@PathVariable Long clientId, @RequestBody PatientRequest request) {
+        return clientRepository.findById(clientId).map(client -> {
+            // Create new Patient instance and set fields manually
+            Patient patient = new Patient();
+            patient.setName(request.getName());
+            if (request.getSpecies() != null) {
+                patient.setSpecies(Species.valueOf(request.getSpecies().toUpperCase()));
+            }
+            patient.setBreed(request.getBreed());
+            if (request.getSex() != null) {
+                patient.setSex(Sex.valueOf(request.getSex().toUpperCase()));
+            }
+            patient.setOwner(client);
+
+            return ResponseEntity.ok(patientRepository.save(patient));
+        }).orElse(ResponseEntity.notFound().build());
     }
 
-    /**
-     * Update Client
-     * PUT /api/clients/{id}
-     */
-    @PutMapping("/{id}")
-    @SuppressWarnings("null")
-    public ResponseEntity<Client> updateClient(
-            @PathVariable Long id,
-            @RequestBody ClientRequest request) {
-        
-        Client client = clientRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Client not found with id: " + id));
-        
-        // Update all fields
-        if (request.getFirstName() != null) {
-            client.setFirstName(request.getFirstName());
-        }
-        if (request.getLastName() != null) {
-            client.setLastName(request.getLastName());
-        }
-        if (request.getEmail() != null) {
-            client.setEmail(request.getEmail());
-        }
-        if (request.getAfm() != null) {
-            client.setAfm(request.getAfm());
-        }
-        if (request.getAdt() != null) {
-            client.setAdt(request.getAdt());
-        }
-        // Handle phone - explicitly check phoneNumber first (frontend field), then phone
-        String newPhone = request.getPhoneNumber() != null ? request.getPhoneNumber() : request.getPhone();
-        if (newPhone != null) {
-            client.setPhone(newPhone);
-        }
-        if (request.getAddress() != null) {
-            client.setAddress(request.getAddress());
-        }
-        if (request.getGdprConsent() != null) {
-            client.setGdprConsent(request.getGdprConsent());
-        }
-        
-        Client updatedClient = clientRepository.save(client);
-        return ResponseEntity.ok(updatedClient);
+    // Assuming DTO classes exist for the request bodies.
+    // If these are defined in separate files, you can remove these inner classes.
+    public static class ClientRequest {
+        private String firstName;
+        private String lastName;
+        private String email;
+        private String phoneNumber;
+        private String address;
+
+        public String getFirstName() { return firstName; }
+        public String getLastName() { return lastName; }
+        public String getEmail() { return email; }
+        public String getPhoneNumber() { return phoneNumber; }
+        public String getAddress() { return address; }
     }
 
-    /**
-     * Add a new Pet to an existing Client
-     * POST /api/clients/{clientId}/pets
-     */
-    @PostMapping("/{clientId}/pets")
-    @SuppressWarnings("null")
-    @Transactional
-    public ResponseEntity<Client> addPetToClient(
-            @PathVariable Long clientId,
-            @RequestBody PatientRequest request) {
-        
-        // Step 1: Fetch the Client
-        Client client = clientRepository.findById(clientId)
-                .orElseThrow(() -> new RuntimeException("Client not found with id: " + clientId));
-        
-        // Step 2: Parse species enum
-        Species species = Species.OTHER; // default
-        if (request.getSpecies() != null) {
-            try {
-                species = Species.valueOf(request.getSpecies().toUpperCase());
-            } catch (IllegalArgumentException e) {
-                // Keep default if invalid
-            }
-        }
-        
-        // Step 3: Parse sex enum
-        Sex sex = null;
-        if (request.getSex() != null) {
-            try {
-                sex = Sex.valueOf(request.getSex().toUpperCase());
-            } catch (IllegalArgumentException e) {
-                // Keep null if invalid
-            }
-        }
-        
-        // Step 4: Create new Patient
-        Patient patient = Patient.builder()
-                .name(request.getName())
-                .species(species)
-                .breed(request.getBreed())
-                .sex(sex)
-                .birthDate(request.getBirthDate())
-                .microchipNumber(request.getMicrochipNumber())
-                .microchipDate(request.getMicrochipDate())
-                .isSterilized(request.getIsSterilized())
-                .sterilizationDate(request.getSterilizationDate())
-                .weight(request.getWeight())
-                .owner(client)
-                .build();
-        
-        // Step 5: Save the Patient
-        patientRepository.save(patient);
-        
-        // Step 6: Return updated Client with all pets (EAGER fetch)
-        return ResponseEntity.ok(clientRepository.findById(clientId).orElseThrow());
+    public static class PatientRequest {
+        private String name;
+        private String species;
+        private String breed;
+        private Integer age;
+        private String sex;
+
+        public String getName() { return name; }
+        public String getSpecies() { return species; }
+        public String getBreed() { return breed; }
+        public Integer getAge() { return age; }
+        public String getSex() { return sex; }
     }
 }

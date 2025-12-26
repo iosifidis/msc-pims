@@ -1,80 +1,73 @@
 package com.pims.backend.controller;
 
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import com.pims.backend.dto.auth.AuthResponse;
-import com.pims.backend.dto.auth.LoginRequest;
-import com.pims.backend.dto.auth.RegisterRequest;
 import com.pims.backend.entity.AppUser;
 import com.pims.backend.entity.Role;
 import com.pims.backend.repository.AppUserRepository;
 import com.pims.backend.repository.RoleRepository;
-import com.pims.backend.security.JwtService;
-
-import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
-@RequiredArgsConstructor
 public class AuthController {
 
-    private final AuthenticationManager authenticationManager;
     private final AppUserRepository appUserRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtService jwtService;
 
-    @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
-        if (appUserRepository.findByUsername(request.getUsername()).isPresent()) {
-            return ResponseEntity.badRequest().body("Username already exists");
+    public AuthController(AppUserRepository appUserRepository, RoleRepository roleRepository, PasswordEncoder passwordEncoder) {
+        this.appUserRepository = appUserRepository;
+        this.roleRepository = roleRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    @PostMapping("/register/vet")
+    public ResponseEntity<?> registerVet(@RequestBody RegisterRequest request) {
+        if (appUserRepository.existsByUsername(request.getUsername())) {
+            return ResponseEntity.badRequest().body("Error: Username is already taken!");
         }
 
-        Role role = roleRepository.findByName(request.getRole())
-                .orElseGet(() -> roleRepository.findByName("OWNER")
-                        .orElseThrow(() -> new RuntimeException("Default role OWNER not found")));
+        Role role = roleRepository.findByName("VET")
+                .orElseGet(() -> {
+                    Role newRole = new Role();
+                    newRole.setName("VET");
+                    return roleRepository.save(newRole);
+                });
 
-        AppUser user = AppUser.builder()
-                .username(request.getUsername())
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .fullName(request.getFullName())
-                .email(request.getEmail())
-                .role(role)
-                .licenseId(request.getLicenseId())
-                .afm(request.getAfm())
-                .isActive(true)
-                .build();
+        // Create new user instance and set fields manually
+        AppUser user = new AppUser();
+        user.setUsername(request.getUsername());
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        user.setRole(role);
 
         appUserRepository.save(user);
 
-        return ResponseEntity.ok("User registered successfully");
+        return ResponseEntity.ok("Vet registered successfully!");
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getUsername(),
-                        request.getPassword()
-                )
-        );
+    // Assuming a DTO class exists for the request body
+    // If this class is defined in a separate file, you can remove this inner class.
+    public static class RegisterRequest {
+        private String username;
+        private String password;
+        // private String email;
+        // private String fullName;
 
-        AppUser user = appUserRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        public String getUsername() {
+            return username;
+        }
 
-        String token = jwtService.generateToken(user);
+        public void setUsername(String username) {
+            this.username = username;
+        }
 
-        return ResponseEntity.ok(AuthResponse.builder()
-                .token(token)
-                .username(user.getUsername())
-                .role(user.getRole().getName())
-                .build());
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
     }
 }

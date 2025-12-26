@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -6,7 +6,8 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { isToday, isThisWeek } from 'date-fns';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import MedicalRecordModal from '../components/MedicalRecordModal';
+
+const API_BASE_URL = 'http://localhost:8080/api';
 
 // ============================================
 // CONSTANTS & HELPERS
@@ -20,6 +21,15 @@ const APPOINTMENT_TYPES = [
     { value: 'EMERGENCY', label: 'Emergency', color: '#dc2626' },
 ];
 
+const APPOINTMENT_STATUSES = [
+    { value: 'SCHEDULED', label: 'Scheduled', buttonClass: 'bg-blue-600 hover:bg-blue-700' },
+    { value: 'CONFIRMED', label: 'Confirmed', buttonClass: 'bg-indigo-600 hover:bg-indigo-700' },
+    { value: 'IN_PROGRESS', label: 'In Progress', buttonClass: 'bg-orange-600 hover:bg-orange-700' },
+    { value: 'COMPLETED', label: 'Completed', buttonClass: 'bg-green-600 hover:bg-green-700' },
+    { value: 'CANCELLED', label: 'Cancelled', buttonClass: 'bg-red-600 hover:bg-red-700' },
+    { value: 'NO_SHOW', label: 'No Show', buttonClass: 'bg-gray-600 hover:bg-gray-700' },
+];
+
 // Helper to preserve local time in ISO string
 const toLocalISOString = (date) => {
     if (!date) return null;
@@ -27,220 +37,936 @@ const toLocalISOString = (date) => {
     return new Date(date.getTime() - offset).toISOString().slice(0, 19);
 };
 
+// ============================================
+// HELPER COMPONENTS (Ported from AppointmentsPage)
+// ============================================
+
+const ClientSearchDropdown = ({ clients, selectedClient, onSelect, disabled }) => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [isOpen, setIsOpen] = useState(false);
+    const [filteredClients, setFilteredClients] = useState([]);
+    const dropdownRef = useRef(null);
+    const inputRef = useRef(null);
+
+    useEffect(() => {
+        if (!searchTerm.trim()) {
+            setFilteredClients(clients.slice(0, 10));
+            return;
+        }
+        const searchLower = searchTerm.toLowerCase();
+        const filtered = clients.filter(client => {
+            const firstName = (client.firstName || '').toLowerCase();
+            const lastName = (client.lastName || '').toLowerCase();
+            const fullName = `${firstName} ${lastName}`;
+            const phone = client.phoneNumber || client.phone || '';
+            return (
+                firstName.includes(searchLower) ||
+                lastName.includes(searchLower) ||
+                fullName.includes(searchLower) ||
+                phone.includes(searchTerm)
+            );
+        });
+        setFilteredClients(filtered.slice(0, 10));
+    }, [searchTerm, clients]);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleSelect = (client) => {
+        onSelect(client);
+        setSearchTerm('');
+        setIsOpen(false);
+    };
+
+    const handleClear = () => {
+        onSelect(null);
+        setSearchTerm('');
+        inputRef.current?.focus();
+    };
+
+    const getClientDisplayName = (client) => {
+        if (!client) return '';
+        const phone = client.phoneNumber || client.phone || '';
+        return `${client.firstName} ${client.lastName}${phone ? ` (${phone})` : ''}`;
+    };
+
+    if (disabled && selectedClient) {
+        return (
+            <div className="w-full border border-gray-300 rounded-md px-4 py-2 bg-gray-100 text-gray-600 cursor-not-allowed">
+                {getClientDisplayName(selectedClient)}
+            </div>
+        );
+    }
+
+    return (
+        <div className="relative" ref={dropdownRef}>
+            {selectedClient ? (
+                <div className="flex items-center justify-between w-full border border-gray-300 rounded-md px-4 py-2 bg-blue-50">
+                    <span className="text-blue-700 font-medium">
+                        {getClientDisplayName(selectedClient)}
+                    </span>
+                    {!disabled && (
+                        <button
+                            type="button"
+                            onClick={handleClear}
+                            className="text-gray-400 hover:text-gray-600 ml-2"
+                        >
+                            ✕
+                        </button>
+                    )}
+                </div>
+            ) : (
+                <>
+                    <div className="relative">
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => {
+                                setSearchTerm(e.target.value);
+                                setIsOpen(true);
+                            }}
+                            onFocus={() => setIsOpen(true)}
+                            placeholder="Search Client by Name or Phone..."
+                            disabled={disabled}
+                            className="w-full border border-gray-300 rounded-md px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                    {isOpen && filteredClients.length > 0 && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                            {filteredClients.map((client) => (
+                                <div
+                                    key={client.id}
+                                    onClick={() => handleSelect(client)}
+                                    className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                >
+                                    <div className="font-medium text-gray-900">
+                                        {client.firstName} {client.lastName}
+                                    </div>
+                                    <div className="text-sm text-gray-500">
+                                        📞 {client.phoneNumber || client.phone || 'No phone'}
+                                        {client.email && ` • ${client.email}`}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
+    );
+};
+
+const PatientHistoryModal = ({ patient, onClose, onViewRecord, onEditRecord, token }) => {
+    const [records, setRecords] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (patient?.id) {
+            axios.get(`${API_BASE_URL}/medical-records/patient/${patient.id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            .then(res => setRecords(res.data))
+            .catch(err => console.error("Error fetching history:", err))
+            .finally(() => setLoading(false));
+        }
+    }, [patient, token]);
+
+    const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
+        return new Date(dateString).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-8">
+                <div className="px-8 py-5 border-b border-gray-200 flex justify-between items-center bg-gray-50 mb-6 -mx-8 -mt-8 rounded-t-lg">
+                    <h2 className="text-2xl font-bold text-gray-900">
+                        Medical History - {patient?.name || 'Unknown Pet'} {patient?.ownerName ? `(${patient.ownerName})` : ''}
+                    </h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl font-bold">×</button>
+                </div>
+
+                <div className="py-6 overflow-y-auto flex-1">
+                    {loading ? (
+                        <div className="text-center text-gray-500">Loading history...</div>
+                    ) : records.length === 0 ? (
+                        <div className="text-center text-gray-400">No medical records found for this patient.</div>
+                    ) : (
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-gray-50 border-b border-gray-200">
+                                    <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">Date</th>
+                                    <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">Type</th>
+                                    <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">Diagnosis</th>
+                                    <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {records.map(record => (
+                                    <tr key={record.id} className="hover:bg-gray-50">
+                                        <td className="px-4 py-3 text-sm text-gray-900">
+                                            {formatDate(record.visitDate || record.createdAt)}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-gray-900">
+                                            {record.appointment?.type || record.appointmentType || 'Visit'}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-gray-600 truncate max-w-xs">
+                                            {record.diagnosis || 'No diagnosis'}
+                                        </td>
+                                        <td className="px-4 py-3 text-right">
+                                            <div className="flex justify-end gap-2">
+                                                <button 
+                                                    onClick={() => onViewRecord(record)}
+                                                    className="text-blue-600 hover:text-blue-800 p-1"
+                                                    title="View Details"
+                                                >
+                                                    👁️
+                                                </button>
+                                                <button 
+                                                    onClick={() => onEditRecord(record)}
+                                                    className="text-green-600 hover:text-green-800 p-1"
+                                                    title="Edit Record"
+                                                >
+                                                    ✏️
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+
+                <div className="flex justify-end mt-8 pt-6 border-t border-gray-100">
+                    <button 
+                        onClick={onClose} 
+                        className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md font-bold transition-colors"
+                    >
+                        Back to Appointment
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const ExaminationModal = ({ appointment, initialData, readOnly, isEditingHistory, onClose, onComplete }) => {
+    const [examData, setExamData] = useState({
+        weight: '',
+        temperature: '',
+        symptoms: '',
+        diagnosis: '',
+        treatment: ''
+    });
+
+    useEffect(() => {
+        if (initialData) {
+            setExamData({
+                weight: initialData.weight || '',
+                temperature: initialData.temperature || '',
+                symptoms: initialData.symptoms || '',
+                diagnosis: initialData.diagnosis || '',
+                treatment: initialData.treatment || ''
+            });
+        }
+    }, [initialData]);
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setExamData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const props = appointment?.extendedProps || appointment || {};
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-8">
+                <div className="px-8 py-5 border-b border-gray-200 flex justify-between items-center bg-gray-50 mb-6 -mx-8 -mt-8 rounded-t-lg">
+                    <h2 className="text-2xl font-bold text-gray-900">
+                        {isEditingHistory ? 'Edit Medical Record' : `Medical Exam for ${props.patient?.name || 'Unknown Pet'}`}
+                    </h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl font-bold">×</button>
+                </div>
+
+                <div className="py-6 overflow-y-auto flex-1 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
+                            <input 
+                                type="number" 
+                                name="weight" 
+                                value={examData.weight} 
+                                onChange={handleChange} 
+                                disabled={readOnly}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" 
+                                step="0.1" 
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Temperature (°C)</label>
+                            <input 
+                                type="number" 
+                                name="temperature" 
+                                value={examData.temperature} 
+                                onChange={handleChange} 
+                                disabled={readOnly}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" 
+                                step="0.1" 
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Symptoms (Subjective)</label>
+                        <textarea 
+                            name="symptoms" 
+                            value={examData.symptoms} 
+                            onChange={handleChange} 
+                            disabled={readOnly}
+                            rows="3" 
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" 
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Diagnosis (Assessment)</label>
+                        <textarea 
+                            name="diagnosis" 
+                            value={examData.diagnosis} 
+                            onChange={handleChange} 
+                            disabled={readOnly}
+                            rows="3" 
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" 
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Treatment (Plan)</label>
+                        <textarea 
+                            name="treatment" 
+                            value={examData.treatment} 
+                            onChange={handleChange} 
+                            disabled={readOnly}
+                            rows="3" 
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" 
+                        />
+                    </div>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-100">
+                    {readOnly ? (
+                        <button 
+                            onClick={onClose} 
+                            className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md font-bold transition-colors"
+                        >
+                            Close
+                        </button>
+                    ) : (
+                        <>
+                            <button 
+                                onClick={onClose} 
+                                className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md font-bold transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={() => onComplete(examData)} 
+                                className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md font-bold transition-colors"
+                            >
+                                {isEditingHistory ? 'Update Record' : 'Complete Examination'}
+                            </button>
+                        </>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ============================================
+// MAIN COMPONENT: DashboardPage
+// ============================================
 const DashboardPage = () => {
   const { user, token } = useAuth();
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
   
-  // Stats State
-  const [stats, setStats] = useState({
-    todayAppointments: 0,
-    weekAppointments: 0,
-    totalPatients: 0,
-    totalRevenue: 0
-  });
-  
-  // Create Appointment Modal State
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState({ start: null, end: null });
-  
-  // Form Data State
+  // Data State
+  const [rawAppointments, setRawAppointments] = useState([]);
+  const [dashboardStats, setDashboardStats] = useState({ totalPatients: 0 });
   const [clients, setClients] = useState([]);
+  const [patients, setPatients] = useState([]);
   const [vets, setVets] = useState([]);
-  const [selectedClient, setSelectedClient] = useState('');
-  const [selectedPatient, setSelectedPatient] = useState('');
-  const [selectedVet, setSelectedVet] = useState(user?.id || '');
-  const [appointmentType, setAppointmentType] = useState('EXAM');
-  const [notes, setNotes] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [patientsLoading, setPatientsLoading] = useState(false);
 
-  // Medical Record Modal State
-  const [selectedEventForRecord, setSelectedEventForRecord] = useState(null);
+  // Modal & Form State
+  const [showModal, setShowModal] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [selectedSlot, setSelectedSlot] = useState({ start: null, end: null });
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [selectedVet, setSelectedVet] = useState('');
   
-  // Derived State
-  const availablePatients = selectedClient 
-    ? clients.find(c => c.id === parseInt(selectedClient))?.patients || []
-    : [];
+  // Exam Modal State
+  const [showExamModal, setShowExamModal] = useState(false);
+  const [examAppointment, setExamAppointment] = useState(null);
+  const [examInitialData, setExamInitialData] = useState(null);
+  const [isExamReadOnly, setIsExamReadOnly] = useState(false);
+
+  // History Modal State
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyPatient, setHistoryPatient] = useState(null);
+  const [isEditingHistory, setIsEditingHistory] = useState(false);
+
+  // Form Data
+  const [formData, setFormData] = useState({
+    clientId: '',
+    clientName: '',
+    patientId: '',
+    vetId: '',
+    type: 'EXAM',
+    status: 'SCHEDULED',
+    notes: '',
+    startTime: '',
+    endTime: ''
+  });
+
+  // Expired Logic: End time is in the past AND status is SCHEDULED
+  const isExpired = formData.status === 'SCHEDULED' && formData.endTime && new Date(formData.endTime) < new Date();
+
+  // Check if appointment is completed (locked/read-only)
+  const isLocked = formData.status === 'COMPLETED' || isExpired;
 
   // ============================================
   // DATA FETCHING
   // ============================================
+  
+  // Fetch Appointments (Fetches ALL, filtering happens in useMemo)
   const fetchAppointments = useCallback(async () => {
-    // Robust User Check: If user isn't ready, don't fetch, but don't crash.
-    if (!user) return;
-
+    if (!token) return;
     try {
       const config = {
         headers: { Authorization: `Bearer ${token}` }
       };
-      const response = await axios.get('http://localhost:8080/api/appointments', config);
-      
-      // Safe Filtering Logic: Check appt.vet exists before accessing .id
-      const filteredAppointments = response.data.filter(appt => {
-          const vetId = appt.vet?.id;
-          const userId = user?.id;
-          return vetId && userId && String(vetId) === String(userId);
-      });
-
-      const formattedEvents = filteredAppointments.map(appt => {
-        // Color Logic matching AppointmentsPage
-        let backgroundColor = '#3b82f6'; // Default Blue
-        let borderColor = '#3b82f6';
-
-        if (appt.status === 'COMPLETED') {
-            backgroundColor = '#16a34a'; // Green
-            borderColor = '#16a34a';
-        } else {
-             const typeConfig = APPOINTMENT_TYPES.find(t => t.value === appt.type);
-             if (typeConfig) {
-                 backgroundColor = typeConfig.color;
-                 borderColor = typeConfig.color;
-             }
-        }
-
-        return {
-            id: appt.id,
-            title: `[${appt.type}] ${appt.patient?.name || 'Unknown'} (${appt.client?.lastName || 'Unknown'})`,
-            start: toLocalISOString(new Date(appt.startTime)),
-            end: toLocalISOString(new Date(appt.endTime)),
-            allDay: false,
-            backgroundColor,
-            borderColor,
-            extendedProps: {
-                client: appt.client,
-                patient: appt.patient,
-                vet: appt.vet,
-                type: appt.type,
-                status: appt.status,
-                notes: appt.notes
-            }
-        };
-      });
-      
-      setEvents(formattedEvents);
-      
-      // Calculate stats based on filtered events
-      const todayCount = formattedEvents.filter(event => 
-        isToday(new Date(event.start))
-      ).length;
-      
-      const weekCount = formattedEvents.filter(event => 
-        isThisWeek(new Date(event.start), { weekStartsOn: 1 })
-      ).length;
-      
-      setStats(prev => ({
-        ...prev,
-        todayAppointments: todayCount,
-        weekAppointments: weekCount
-      }));
-      
+      const response = await axios.get(`${API_BASE_URL}/appointments`, config);
+      setRawAppointments(response.data || []);
     } catch (error) {
       console.error('Error fetching appointments:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [token, user]);
-
-  const fetchDashboardStats = useCallback(async () => {
-    try {
-      const config = {
-        headers: { Authorization: `Bearer ${token}` }
-      };
-      const response = await axios.get('http://localhost:8080/api/dashboard/stats', config);
-      
-      setStats(prev => ({
-        ...prev,
-        totalPatients: response.data.totalPatients || 0,
-        totalRevenue: response.data.revenue || 0
-      }));
-    } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
     }
   }, [token]);
 
-  const fetchFormData = useCallback(async () => {
+  // Fetch Patients for Client
+  const fetchPatientsForClient = useCallback(async (clientId) => {
+    if (!clientId) {
+        setPatients([]);
+        return;
+    }
+    setPatientsLoading(true);
     try {
-      const config = {
-        headers: { Authorization: `Bearer ${token}` }
-      };
-      const [clientsRes, vetsRes] = await Promise.all([
-        axios.get('http://localhost:8080/api/clients', config),
-        axios.get('http://localhost:8080/api/users/vets', config).catch(() => ({ data: [] }))
-      ]);
-      setClients(clientsRes.data);
-      setVets(vetsRes.data);
-      
-      if (vetsRes.data.length > 0 && !selectedVet) {
-         const currentUserIsVet = vetsRes.data.find(v => String(v.id) === String(user?.id));
-         setSelectedVet(currentUserIsVet ? user.id : vetsRes.data[0].id);
-      } else if (!selectedVet && user) {
-          setSelectedVet(user.id);
-      }
-    } catch (error) {
-      console.error('Error fetching form data:', error);
+        const response = await axios.get(`${API_BASE_URL}/patients/owner/${clientId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        setPatients(response.data);
+    } catch (err) {
+        console.error("Error fetching patients:", err);
+        setPatients([]);
+    } finally {
+        setPatientsLoading(false);
     }
-  }, [selectedVet, user, token]);
+  }, [token]);
 
+  // Initial Load Effect (Independent of User)
   useEffect(() => {
-    if (token && user) {
-        fetchAppointments();
-        fetchDashboardStats();
-        fetchFormData();
+    const loadDashboardData = async () => {
+      if (!token) return;
+
+      try {
+        setLoading(true);
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+
+        // Fetch Stats, Clients, Vets in parallel
+        const [statsRes, clientsRes, vetsRes] = await Promise.all([
+          axios.get(`${API_BASE_URL}/dashboard/stats`, config),
+          axios.get(`${API_BASE_URL}/clients`, config),
+          axios.get(`${API_BASE_URL}/users/vets`, config).catch(() => ({ data: [] }))
+        ]);
+
+        setDashboardStats({
+          totalPatients: statsRes.data.totalPatients || 0,
+        });
+        setClients(clientsRes.data || []);
+        setVets(vetsRes.data || []);
+
+        // Fetch Appointments
+        await fetchAppointments();
+
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboardData();
+  }, [token, fetchAppointments]); // Intentionally excludes 'user' to prevent loops
+
+  // ============================================
+  // FILTERING & DERIVED STATE
+  // ============================================
+
+  // Robust Filtering: Compare Usernames (Handles missing user.id)
+  const myAppointments = useMemo(() => {
+    if (!user || !rawAppointments.length) return [];
+    // robust check: compare usernames as strings
+    return rawAppointments.filter(appt =>
+        appt.vet?.username && user.username &&
+        appt.vet.username === user.username
+    );
+  }, [user, rawAppointments]);
+
+  // Calculate Stats from Filtered List
+  const stats = useMemo(() => {
+    const todayCount = myAppointments.filter(appt => isToday(new Date(appt.startTime))).length;
+    const weekCount = myAppointments.filter(appt => isThisWeek(new Date(appt.startTime), { weekStartsOn: 1 })).length;
+
+    return {
+      todayAppointments: todayCount,
+      weekAppointments: weekCount,
+    };
+  }, [myAppointments, dashboardStats]);
+
+  // Format Events for Calendar
+  const events = useMemo(() => {
+    return myAppointments.map(appt => {
+      const typeConfig = APPOINTMENT_TYPES.find(t => t.value === appt.type) || APPOINTMENT_TYPES[0];
+      
+      // Determine color based on status first, then type
+      let backgroundColor = typeConfig.color;
+      let borderColor = typeConfig.color;
+      
+      const start = new Date(appt.startTime);
+      const end = appt.endTime ? new Date(appt.endTime) : new Date(start.getTime() + 30 * 60000);
+      const isExpired = end < new Date() && appt.status === 'SCHEDULED';
+
+      if (appt.status === 'COMPLETED') {
+          backgroundColor = '#16a34a'; // Green
+          borderColor = '#16a34a';
+      } else if (isExpired) {
+          backgroundColor = '#6b7280'; // Gray
+          borderColor = '#6b7280';
+      }
+
+      return {
+          id: appt.id,
+          title: `${appt.client?.firstName || ''} ${appt.client?.lastName || ''} - ${appt.patient?.name || ''}${isExpired ? ' (No Show)' : ''}`,
+          start: toLocalISOString(start),
+          end: toLocalISOString(end),
+          allDay: false,
+          backgroundColor,
+          borderColor,
+          extendedProps: {
+              client: appt.client,
+              patient: appt.patient,
+              vet: appt.vet,
+              type: appt.type,
+              status: appt.status,
+              notes: appt.notes
+          }
+      };
+    });
+  }, [myAppointments]);
+
+  // Auto-select current vet in form when user is available
+  useEffect(() => {
+      if (!selectedVet && user && vets.length > 0) {
+          const currentVet = vets.find(v => v.username === user.username);
+          if (currentVet) {
+              setSelectedVet(currentVet.id);
+          }
+      }
+  }, [user, vets, selectedVet]);
+
+  // Safe Data Parsing for Modal
+  useEffect(() => {
+    if (showModal && selectedAppointment) {
+        const initialData = selectedAppointment;
+        const props = initialData.extendedProps || initialData;
+
+        let startTime = '';
+        let endTime = '';
+
+        if (initialData.start) {
+            startTime = toLocalISOString(initialData.start);
+            endTime = initialData.end ? toLocalISOString(initialData.end) : '';
+        }
+
+        setFormData({
+            clientId: props.client?.id || '',
+            clientName: props.client ? `${props.client.firstName} ${props.client.lastName}` : '',
+            patientId: props.patient?.id || '',
+            vetId: props.vet?.id || '',
+            type: props.type || 'EXAM',
+            status: props.status || 'SCHEDULED',
+            notes: props.notes || '',
+            startTime: startTime,
+            endTime: endTime
+        });
+        
+        const client = props.client || null;
+        setSelectedClient(client);
+        
+        if (client?.id) {
+            fetchPatientsForClient(client.id);
+        } else {
+            setPatients([]);
+        }
     }
-  }, [fetchAppointments, fetchDashboardStats, fetchFormData, token, user]);
+  }, [selectedAppointment, showModal, fetchPatientsForClient]);
 
   // ============================================
   // HANDLERS
   // ============================================
+  
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleClientSelect = (client) => {
+    setSelectedClient(client);
+    if (client) {
+        setFormData(prev => ({
+            ...prev,
+            clientId: client.id,
+            clientName: `${client.firstName} ${client.lastName}`,
+            patientId: ''
+        }));
+        fetchPatientsForClient(client.id);
+    } else {
+        setFormData(prev => ({ ...prev, clientId: '', clientName: '', patientId: '' }));
+        setPatients([]);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+        clientId: '',
+        clientName: '',
+        patientId: '',
+        vetId: '',
+        type: 'EXAM',
+        status: 'SCHEDULED',
+        notes: '',
+        startTime: '',
+        endTime: ''
+    });
+    setSelectedClient(null);
+    setPatients([]);
+    setSelectedSlot({ start: null, end: null });
+    setHistoryPatient(null);
+  };
+
   const handleDateSelect = (selectInfo) => {
+    setShowModal(true);
+    setIsEditMode(false);
+    setSelectedAppointment(null);
     setSelectedSlot({ start: selectInfo.start, end: selectInfo.end });
-    setShowCreateModal(true);
-    setSelectedClient('');
-    setSelectedPatient('');
-    setAppointmentType('EXAM');
-    setNotes('');
+    setFormData({
+        clientId: '',
+        clientName: '',
+        patientId: '',
+        vetId: '',
+        type: 'EXAM',
+        status: 'SCHEDULED',
+        notes: '',
+        startTime: selectInfo.startStr,
+        endTime: selectInfo.endStr
+    });
+    setSelectedClient(null);
+    setPatients([]);
   };
 
   const handleEventClick = (clickInfo) => {
-    const event = clickInfo.event;
-    // Map FullCalendar event props back to resource structure for modal
-    const resource = {
-        id: event.id,
-        ...event.extendedProps
-    };
-    setSelectedEventForRecord(resource);
+    setShowModal(true);
+    setIsEditMode(true);
+    setSelectedAppointment(clickInfo.event);
+    setSelectedSlot({ start: clickInfo.event.start, end: clickInfo.event.end });
   };
 
-  const handleSaveAppointment = async () => {
-    if (!selectedClient || !selectedPatient || !selectedVet) {
-      alert('Please select Client, Patient and Vet');
+  // Helper to format payload
+  const formatPayload = (data, overrides = {}) => {
+    const props = data.extendedProps || data;
+    const clientId = props.client?.id || props.clientId;
+    const patientId = props.patient?.id || props.patientId;
+    const vetId = props.vet?.id || props.vetId;
+
+    let start = overrides.startTime || data.start || data.startTime;
+    let end = overrides.endTime || data.end || data.endTime;
+
+    const startTime = start instanceof Date ? toLocalISOString(start) : start;
+    const endTime = end instanceof Date ? toLocalISOString(end) : end;
+
+    const { startTime: _s, endTime: _e, ...otherOverrides } = overrides;
+
+    return {
+        clientId,
+        patientId,
+        vetId,
+        type: props.type,
+        status: props.status,
+        notes: props.notes,
+        startTime,
+        endTime,
+        ...otherOverrides
+    };
+  };
+
+  // Drag & Drop Logic
+  const handleEventDrop = async (info) => {
+    const { event, oldEvent } = info;
+    let newStart = event.start;
+    let newEnd = event.end;
+    if (!newEnd) {
+        let duration = 30 * 60000;
+        if (oldEvent && oldEvent.start && oldEvent.end) {
+            duration = oldEvent.end.getTime() - oldEvent.start.getTime();
+        }
+        newEnd = new Date(newStart.getTime() + duration);
+    }
+    
+    // Reactivate if moving to future
+    const isFuture = newStart > new Date();
+    let statusOverride = undefined;
+    if (isFuture && event.extendedProps.status === 'SCHEDULED') {
+        statusOverride = 'SCHEDULED';
+    }
+
+    const payload = formatPayload(event, {
+        startTime: newStart,
+        endTime: newEnd,
+        status: statusOverride
+    });
+
+    try {
+        await axios.put(`${API_BASE_URL}/appointments/${event.id}`, payload, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        fetchAppointments();
+    } catch (error) {
+        info.revert();
+        alert('Failed to move appointment.');
+    }
+  };
+
+  const handleSave = async () => {
+    if (!formData.clientId || !formData.patientId || !formData.vetId || !formData.startTime) {
+      alert('Please fill in all required fields.');
       return;
     }
 
     const payload = {
-      clientId: parseInt(selectedClient),
-      patientId: parseInt(selectedPatient),
-      vetId: parseInt(selectedVet),
-      startTime: selectedSlot.start.toISOString(),
-      endTime: selectedSlot.end.toISOString(),
-      type: appointmentType,
-      notes: notes
+      clientId: formData.clientId,
+      patientId: formData.patientId,
+      vetId: formData.vetId,
+      type: formData.type,
+      status: formData.status,
+      notes: formData.notes,
+      startTime: new Date(formData.startTime).toISOString(),
+      endTime: formData.endTime ? new Date(formData.endTime).toISOString() : null
     };
 
     try {
-      const config = {
-        headers: { Authorization: `Bearer ${token}` }
-      };
-      await axios.post('http://localhost:8080/api/appointments', payload, config);
-      setShowCreateModal(false);
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      if (selectedAppointment?.id) {
+        await axios.put(`${API_BASE_URL}/appointments/${selectedAppointment.id}`, payload, config);
+      } else {
+        await axios.post(`${API_BASE_URL}/appointments`, payload, config);
+      }
+      setShowModal(false);
+      resetForm();
       fetchAppointments();
-      fetchDashboardStats();
-      alert('Appointment created successfully!');
     } catch (error) {
-      console.error('Error creating appointment:', error);
-      alert('Failed to create appointment.');
+      console.error('Error saving appointment:', error);
+      alert('Failed to save appointment.');
     }
   };
 
+  const handleDelete = async () => {
+    if (!selectedAppointment?.id) return;
+    if (!window.confirm('Are you sure you want to delete this appointment?')) return;
+
+    try {
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+        await axios.delete(`${API_BASE_URL}/appointments/${selectedAppointment.id}`, config);
+        setShowModal(false);
+        resetForm();
+        fetchAppointments();
+    } catch (error) {
+        console.error('Error deleting appointment:', error);
+        alert('Failed to delete appointment.');
+    }
+  };
+
+  const handleStartExam = async () => {
+    if (!selectedAppointment?.id) return;
+    try {
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+        const payload = formatPayload(selectedAppointment, { status: 'IN_PROGRESS' });
+        await axios.put(`${API_BASE_URL}/appointments/${selectedAppointment.id}`, payload, config);
+        
+        setExamInitialData(null);
+        setIsExamReadOnly(false);
+        setIsEditingHistory(false);
+        setShowModal(false);
+        setExamAppointment(selectedAppointment);
+        setShowExamModal(true);
+        fetchAppointments();
+    } catch (error) {
+        console.error("Error starting exam:", error);
+        alert("Failed to start examination.");
+    }
+  };
+
+  const handleViewRecord = async () => {
+    if (!selectedAppointment?.id) return;
+    try {
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+        const response = await axios.get(`${API_BASE_URL}/medical-records/appointment/${selectedAppointment.id}`, config);
+        
+        setExamInitialData(response.data);
+        setExamAppointment(selectedAppointment);
+        setIsExamReadOnly(true);
+        setIsEditingHistory(false);
+        setShowModal(false);
+        setShowExamModal(true);
+    } catch (error) {
+        // Handle 404: Open in Create Mode
+        if (error.response && error.response.status === 404) {
+            setExamInitialData(null);
+            setExamAppointment(selectedAppointment);
+            setIsExamReadOnly(false);
+            setIsEditingHistory(false);
+            setShowModal(false);
+            setShowExamModal(true);
+        } else {
+            console.error("Error fetching medical record:", error);
+            alert("Failed to load medical record.");
+        }
+    }
+  };
+
+  const handleCompleteExam = async (examData) => {
+    if (isEditingHistory) {
+        handleUpdateHistoryRecord(examData);
+        return;
+    }
+    if (!examAppointment?.id) return;
+
+    try {
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+        const payload = {
+            appointmentId: examAppointment.id,
+            weight: parseFloat(examData.weight),
+            temperature: parseFloat(examData.temperature),
+            symptoms: examData.symptoms,
+            diagnosis: examData.diagnosis,
+            treatment: examData.treatment
+        };
+        await axios.post(`${API_BASE_URL}/medical-records`, payload, config);
+        setShowExamModal(false);
+        setExamAppointment(null);
+        fetchAppointments();
+    } catch (error) {
+        console.error("Error completing exam:", error);
+        alert("Failed to complete examination.");
+    }
+  };
+
+  // History Handlers
+  const handleHistory = () => {
+    const props = selectedAppointment?.extendedProps || selectedAppointment || {};
+    const patient = props.patient;
+    const client = props.client;
+    if (!patient?.id) {
+        alert("Please select a patient first.");
+        return;
+    }
+    setHistoryPatient({ ...patient, ownerName: client ? `${client.firstName} ${client.lastName}` : '' });
+    setShowModal(false);
+    setShowHistoryModal(true);
+  };
+
+  const handleBackToAppointment = () => {
+    setShowHistoryModal(false);
+    setHistoryPatient(null);
+    setShowModal(true);
+  };
+
+  const handleViewHistoryRecord = (record) => {
+    setExamInitialData(record);
+    setExamAppointment({ extendedProps: { patient: historyPatient } });
+    setIsExamReadOnly(true);
+    setIsEditingHistory(false);
+    setShowHistoryModal(false);
+    setShowExamModal(true);
+  };
+
+  const handleEditHistoryRecord = (record) => {
+    setExamInitialData(record);
+    setExamAppointment({ extendedProps: { patient: historyPatient } });
+    setIsExamReadOnly(false);
+    setIsEditingHistory(true);
+    setShowHistoryModal(false);
+    setShowExamModal(true);
+  };
+
+  const handleUpdateHistoryRecord = async (examData) => {
+    if (!examInitialData?.id) return;
+    try {
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+        const payload = {
+            id: examInitialData.id,
+            weight: parseFloat(examData.weight),
+            temperature: parseFloat(examData.temperature),
+            symptoms: examData.symptoms,
+            diagnosis: examData.diagnosis,
+            treatment: examData.treatment
+        };
+        await axios.put(`${API_BASE_URL}/medical-records/${examInitialData.id}`, payload, config);
+        setShowExamModal(false);
+        setShowHistoryModal(true);
+    } catch (error) {
+        console.error("Error updating record:", error);
+        alert("Failed to update medical record.");
+    }
+  };
+
+  const handleCloseExamModal = () => {
+    setShowExamModal(false);
+    setExamAppointment(null);
+    setExamInitialData(null);
+    setIsEditingHistory(false);
+    setIsExamReadOnly(false);
+    if (historyPatient) setShowHistoryModal(true);
+  };
+
+  // ============================================
+  // RENDER
+  // ============================================
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -249,45 +975,18 @@ const DashboardPage = () => {
     );
   }
 
-  // ============================================
-  // STYLES
-  // ============================================
-  const modalOverlayStyle = {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    zIndex: 10000,
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center'
-  };
-
-  const modalContentStyle = {
-    backgroundColor: 'white',
-    padding: '24px',
-    borderRadius: '8px',
-    width: '450px',
-    maxWidth: '90%',
-    maxHeight: '90vh',
-    overflowY: 'auto',
-    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)'
-  };
-
-  const fieldStyle = { marginBottom: '16px' };
-  const labelStyle = { display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' };
-  const inputStyle = { width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '8px', fontSize: '14px' };
-  const disabledInputStyle = { ...inputStyle, backgroundColor: '#f3f4f6', cursor: 'not-allowed' };
-  const buttonContainerStyle = { marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '12px' };
-  const cancelButtonStyle = { padding: '8px 16px', border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: 'white', color: '#374151', cursor: 'pointer', fontSize: '14px', fontWeight: '500' };
-  const saveButtonStyle = { padding: '8px 16px', border: 'none', borderRadius: '6px', backgroundColor: '#2563eb', color: 'white', cursor: 'pointer', fontSize: '14px', fontWeight: '500' };
+  if (!user) {
+    return (
+      <div className="p-6 text-center text-gray-600">
+        Please log in to view the dashboard.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
           <div className="flex items-center justify-between">
             <div>
@@ -313,15 +1012,6 @@ const DashboardPage = () => {
               <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalPatients}</p>
             </div>
             <div className="text-4xl">🐾</div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-yellow-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">€{stats.totalRevenue.toFixed(2)}</p>
-            </div>
-            <div className="text-4xl">💰</div>
           </div>
         </div>
       </div>
@@ -352,137 +1042,155 @@ const DashboardPage = () => {
             height="100%"
             eventDisplay="block"
             nowIndicator={true}
+            editable={true}
+            eventDrop={handleEventDrop}
           />
         </div>
       </div>
 
-      {/* Create Appointment Modal */}
-      {showCreateModal && (
-        <div style={modalOverlayStyle}>
-          <div style={modalContentStyle}>
-            <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px', color: '#1f2937' }}>
-              New Appointment
-            </h3>
-            
-            <div style={{ marginBottom: '16px', fontSize: '14px', color: '#6b7280' }}>
-              <p style={{ margin: 0 }}>
-                <strong>Time:</strong> {selectedSlot.start?.toLocaleString()} - {selectedSlot.end?.toLocaleTimeString()}
-              </p>
+      {/* Appointment Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-8">
+                {/* Header */}
+                <div className="px-8 py-5 border-b border-gray-200 flex justify-between items-center bg-gray-50 mb-6 -mx-8 -mt-8 rounded-t-lg">
+                    <div className="ml-8">
+                        <div className="flex items-center gap-3">
+                            <h2 className="text-2xl font-bold text-gray-900">
+                                {formData.status === 'COMPLETED' ? 'Medical Record' : (isExpired ? 'Appointment Expired' : (isEditMode ? 'Edit Appointment' : 'New Appointment'))}
+                            </h2>
+                            {formData.status === 'COMPLETED' && (
+                                <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-bold rounded-full uppercase">
+                                    🔒 Completed
+                                </span>
+                            )}
+                            {isExpired && (
+                                <span className="px-3 py-1 bg-gray-100 text-gray-800 text-xs font-bold rounded-full uppercase">
+                                    ⚠️ Expired
+                                </span>
+                            )}
+                        </div>
+                        {selectedSlot.start && (
+                            <p className="text-sm text-gray-500 mt-1">
+                                {selectedSlot.start.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                            </p>
+                        )}
+                    </div>
+                    <button onClick={() => { setShowModal(false); resetForm(); }} className="text-gray-400 hover:text-gray-600 text-2xl font-bold mr-8">×</button>
+                </div>
+
+                {/* Body */}
+                <div className="py-6 overflow-y-auto flex-1">
+                    {isExpired && (
+                        <div className="mb-6 p-4 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 rounded-r-md">
+                            <p className="font-bold flex items-center gap-2"><span className="text-xl">⚠️</span> This appointment has passed.</p>
+                            <p className="mt-1 ml-8 text-sm">Drag and drop it to a future time/date on the calendar to reactivate it.</p>
+                        </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Start Time <span className="text-red-500">*</span></label>
+                            <input type="datetime-local" name="startTime" value={formData.startTime} onChange={handleFormChange} className="w-full border border-gray-300 rounded-md px-4 py-2" disabled={isLocked} />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">End Time <span className="text-red-500">*</span></label>
+                            <input type="datetime-local" name="endTime" value={formData.endTime} onChange={handleFormChange} className="w-full border border-gray-300 rounded-md px-4 py-2" disabled={isLocked} />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Client <span className="text-red-500">*</span></label>
+                            <ClientSearchDropdown clients={clients} selectedClient={selectedClient} onSelect={handleClientSelect} disabled={isEditMode || isLocked} />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Patient <span className="text-red-500">*</span> {patientsLoading && <span className="text-blue-500 ml-2">(Loading...)</span>}</label>
+                            {!selectedClient ? (
+                                <div className="w-full border border-dashed border-gray-300 rounded-md px-4 py-2 bg-gray-50 text-gray-400">Select a client first</div>
+                            ) : patients.length === 0 ? (
+                                <div className="w-full border border-yellow-300 rounded-md px-4 py-2 bg-yellow-50 text-yellow-800">⚠️ No pets registered.</div>
+                            ) : (
+                                <select name="patientId" value={formData.patientId} onChange={handleFormChange} className="w-full border border-gray-300 rounded-md px-4 py-2" disabled={isLocked}>
+                                    <option value="">Select a pet...</option>
+                                    {patients.map(p => <option key={p.id} value={p.id}>{p.name} ({p.species})</option>)}
+                                </select>
+                            )}
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Veterinarian <span className="text-red-500">*</span></label>
+                            <select name="vetId" value={formData.vetId} onChange={handleFormChange} className="w-full border border-gray-300 rounded-md px-4 py-2" disabled={isLocked}>
+                                <option value="">Select a vet...</option>
+                                {vets.map(v => <option key={v.id} value={v.id}>{v.fullName || v.username}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                            <select name="type" value={formData.type} onChange={handleFormChange} className="w-full border border-gray-300 rounded-md px-4 py-2" disabled={isLocked}>
+                                {APPOINTMENT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                            </select>
+                        </div>
+                        {isEditMode && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                                <select name="status" value={formData.status} onChange={handleFormChange} className="w-full border border-gray-300 rounded-md px-4 py-2" disabled={isLocked}>
+                                    {APPOINTMENT_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                                </select>
+                            </div>
+                        )}
+                        <div className={isEditMode ? 'col-span-1' : 'col-span-2'}>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Notes {isLocked && <span className="text-gray-400">(Read Only)</span>}</label>
+                            <textarea name="notes" value={formData.notes} onChange={handleFormChange} readOnly={isLocked} rows={3} className={`w-full border border-gray-300 rounded-md px-4 py-2 resize-none ${isLocked ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : ''}`} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-100">
+                    <div className="flex gap-3">
+                        {selectedAppointment?.id && (
+                            <>
+                                {!isExpired && (
+                                    <button onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-bold transition-colors" disabled={isLocked}>Delete</button>
+                                )}
+                                {!isExpired && (isLocked ? (
+                                    <button onClick={handleViewRecord} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md font-bold transition-colors">Medical Record</button>
+                                ) : (
+                                    <button onClick={handleStartExam} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md font-bold transition-colors">Examine</button>
+                                ))}
+                                <button onClick={handleHistory} className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md font-bold transition-colors">History</button>
+                            </>
+                        )}
+                    </div>
+                    <div className="flex gap-3">
+                        <button onClick={() => { setShowModal(false); resetForm(); }} className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md font-bold transition-colors">Cancel</button>
+                        {!isExpired && (
+                            <button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-bold transition-colors" disabled={isLocked}>
+                                {selectedAppointment?.id ? 'Update' : 'Save'}
+                            </button>
+                        )}
+                    </div>
+                </div>
             </div>
-
-            <div>
-              {/* Client Select */}
-              <div style={fieldStyle}>
-                <label style={labelStyle}>Client</label>
-                <select
-                  value={selectedClient}
-                  onChange={(e) => {
-                    setSelectedClient(e.target.value);
-                    setSelectedPatient('');
-                  }}
-                  style={inputStyle}
-                >
-                  <option value="">Select Client</option>
-                  {clients.map(client => (
-                    <option key={client.id} value={client.id}>
-                      {client.lastName} {client.firstName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Patient Select */}
-              <div style={fieldStyle}>
-                <label style={labelStyle}>Patient</label>
-                <select
-                  value={selectedPatient}
-                  onChange={(e) => setSelectedPatient(e.target.value)}
-                  disabled={!selectedClient}
-                  style={!selectedClient ? disabledInputStyle : inputStyle}
-                >
-                  <option value="">Select Patient</option>
-                  {availablePatients.map(patient => (
-                    <option key={patient.id} value={patient.id}>
-                      {patient.name} ({patient.species})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Vet Select */}
-              <div style={fieldStyle}>
-                <label style={labelStyle}>Veterinarian</label>
-                <select
-                  value={selectedVet}
-                  onChange={(e) => setSelectedVet(e.target.value)}
-                  style={inputStyle}
-                >
-                  <option value="">Select Vet</option>
-                  {vets.length > 0 ? (
-                    vets.map(vet => (
-                      <option key={vet.id} value={vet.id}>
-                        {vet.fullName || vet.username}
-                      </option>
-                    ))
-                  ) : (
-                    user && <option value={user.id}>{user.username} (Current)</option>
-                  )}
-                </select>
-              </div>
-
-              {/* Type Select */}
-              <div style={fieldStyle}>
-                <label style={labelStyle}>Type</label>
-                <select
-                  value={appointmentType}
-                  onChange={(e) => setAppointmentType(e.target.value)}
-                  style={inputStyle}
-                >
-                  <option value="EXAM">Exam</option>
-                  <option value="SURGERY">Surgery</option>
-                  <option value="VACCINATION">Vaccination</option>
-                  <option value="GROOMING">Grooming</option>
-                  <option value="OTHER">Other</option>
-                </select>
-              </div>
-
-              {/* Notes */}
-              <div style={fieldStyle}>
-                <label style={labelStyle}>Notes</label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }}
-                  rows="3"
-                ></textarea>
-              </div>
-            </div>
-
-            <div style={buttonContainerStyle}>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                style={cancelButtonStyle}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveAppointment}
-                style={saveButtonStyle}
-              >
-                Save Appointment
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
-      {/* Medical Record Modal */}
-      {selectedEventForRecord && (
-        <MedicalRecordModal
-          appointmentId={selectedEventForRecord.id}
-          patientId={selectedEventForRecord.patient?.id}
-          patientName={selectedEventForRecord.patient?.name || 'Unknown Patient'}
-          onClose={() => setSelectedEventForRecord(null)}
+      {/* History Modal */}
+      {showHistoryModal && (
+        <PatientHistoryModal
+            patient={historyPatient}
+            onClose={handleBackToAppointment}
+            onViewRecord={handleViewHistoryRecord}
+            onEditRecord={handleEditHistoryRecord}
+            token={token}
+        />
+      )}
+
+      {/* Exam Modal */}
+      {showExamModal && (
+        <ExaminationModal 
+            appointment={examAppointment}
+            initialData={examInitialData}
+            readOnly={isExamReadOnly}
+            isEditingHistory={isEditingHistory}
+            onClose={handleCloseExamModal}
+            onComplete={handleCompleteExam}
         />
       )}
     </div>

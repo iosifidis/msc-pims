@@ -90,18 +90,17 @@ public class AppointmentController {
             throw new RuntimeException("Vet is busy");
         }
 
-        Appointment appointment = Appointment.builder()
-                .client(client)
-                .patient(patient)
-                .vet(vet)
-                .resource(resource)
-                .startTime(request.getStartTime())
-                .endTime(request.getEndTime())
-                .notes(request.getNotes())
-                .reason(request.getReason())
-                .type(request.getType())
-                .status(AppointmentStatus.SCHEDULED)
-                .build();
+        Appointment appointment = new Appointment();
+        appointment.setClient(client);
+        appointment.setPatient(patient);
+        appointment.setVet(vet);
+        appointment.setResource(resource);
+        appointment.setStartTime(request.getStartTime());
+        appointment.setEndTime(request.getEndTime());
+        appointment.setNotes(request.getNotes());
+        appointment.setReason(request.getReason());
+        appointment.setType(request.getType());
+        appointment.setStatus(AppointmentStatus.SCHEDULED);
 
         // Save the appointment
         Appointment savedAppointment = appointmentRepository.save(appointment);
