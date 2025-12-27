@@ -18,7 +18,6 @@ public class MedicalRecordController {
     private final MedicalRecordRepository medicalRecordRepository;
     private final AppointmentRepository appointmentRepository;
 
-    @Autowired
     public MedicalRecordController(MedicalRecordRepository medicalRecordRepository, AppointmentRepository appointmentRepository) {
         this.medicalRecordRepository = medicalRecordRepository;
         this.appointmentRepository = appointmentRepository;
@@ -31,13 +30,17 @@ public class MedicalRecordController {
     }
 
     @PostMapping
-    public ResponseEntity<MedicalRecord> createMedicalRecord(@RequestBody MedicalRecord medicalRecord, @RequestParam Long appointmentId) {
-        
-        Appointment appointment = appointmentRepository.findById(appointmentId)
+    public ResponseEntity<MedicalRecord> createMedicalRecord(@RequestBody MedicalRecordRequest request) {
+        Appointment appointment = appointmentRepository.findById(request.getAppointmentId())
                 .orElseThrow(() -> new RuntimeException("Appointment not found"));
 
-        // Link appointment to medical record before saving
+        MedicalRecord medicalRecord = new MedicalRecord();
         medicalRecord.setAppointment(appointment);
+        medicalRecord.setDiagnosis(request.getDiagnosis());
+        medicalRecord.setTreatment(request.getTreatment());
+        medicalRecord.setNotes(request.getNotes());
+        medicalRecord.setPatient(appointment.getPatient());
+
         MedicalRecord savedRecord = medicalRecordRepository.save(medicalRecord);
 
         appointment.setStatus(AppointmentStatus.COMPLETED);
@@ -50,5 +53,21 @@ public class MedicalRecordController {
     public ResponseEntity<List<MedicalRecord>> getMedicalRecordsByPatient(@PathVariable Long patientId) {
         List<MedicalRecord> records = medicalRecordRepository.findByPatientId(patientId);
         return ResponseEntity.ok(records);
+    }
+
+    public static class MedicalRecordRequest {
+        private Long appointmentId;
+        private String diagnosis;
+        private String treatment;
+        private String notes;
+
+        public Long getAppointmentId() { return appointmentId; }
+        public void setAppointmentId(Long appointmentId) { this.appointmentId = appointmentId; }
+        public String getDiagnosis() { return diagnosis; }
+        public void setDiagnosis(String diagnosis) { this.diagnosis = diagnosis; }
+        public String getTreatment() { return treatment; }
+        public void setTreatment(String treatment) { this.treatment = treatment; }
+        public String getNotes() { return notes; }
+        public void setNotes(String notes) { this.notes = notes; }
     }
 }

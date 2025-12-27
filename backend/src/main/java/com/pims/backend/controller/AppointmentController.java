@@ -27,11 +27,8 @@ import com.pims.backend.repository.ClientRepository;
 import com.pims.backend.repository.PatientRepository;
 import com.pims.backend.repository.ResourceRepository;
 
-import lombok.RequiredArgsConstructor;
-
 @RestController
 @RequestMapping("/api/appointments")
-@RequiredArgsConstructor
 public class AppointmentController {
 
     private final AppointmentRepository appointmentRepository;
@@ -39,6 +36,18 @@ public class AppointmentController {
     private final PatientRepository patientRepository;
     private final AppUserRepository appUserRepository;
     private final ResourceRepository resourceRepository;
+
+    public AppointmentController(AppointmentRepository appointmentRepository,
+                                 ClientRepository clientRepository,
+                                 PatientRepository patientRepository,
+                                 AppUserRepository appUserRepository,
+                                 ResourceRepository resourceRepository) {
+        this.appointmentRepository = appointmentRepository;
+        this.clientRepository = clientRepository;
+        this.patientRepository = patientRepository;
+        this.appUserRepository = appUserRepository;
+        this.resourceRepository = resourceRepository;
+    }
 
     @GetMapping
     public List<Appointment> getAllAppointments() {
@@ -68,8 +77,7 @@ public class AppointmentController {
     }
 
     @PostMapping
-    @SuppressWarnings("null")
-    public Appointment createAppointment(@RequestBody AppointmentRequest request) {
+    public ResponseEntity<Appointment> createAppointment(@RequestBody AppointmentRequest request) {
         Client client = clientRepository.findById(request.getClientId())
                 .orElseThrow(() -> new RuntimeException("Client not found"));
 
@@ -79,6 +87,7 @@ public class AppointmentController {
         AppUser vet = appUserRepository.findById(request.getVetId())
                 .orElseThrow(() -> new RuntimeException("Vet not found"));
 
+        // Handle Resource (optional)
         Resource resource = null;
         if (request.getResourceId() != null) {
             resource = resourceRepository.findById(request.getResourceId())
@@ -94,7 +103,7 @@ public class AppointmentController {
         appointment.setClient(client);
         appointment.setPatient(patient);
         appointment.setVet(vet);
-        appointment.setResource(resource);
+        appointment.setResource(resource); // Set resource (can be null)
         appointment.setStartTime(request.getStartTime());
         appointment.setEndTime(request.getEndTime());
         appointment.setNotes(request.getNotes());
@@ -106,11 +115,10 @@ public class AppointmentController {
         Appointment savedAppointment = appointmentRepository.save(appointment);
         
         // Perform fresh fetch to ensure all EAGER relationships are fully populated
-        return appointmentRepository.findById(savedAppointment.getId()).orElseThrow();
+        return ResponseEntity.ok(appointmentRepository.findById(savedAppointment.getId()).orElseThrow());
     }
 
     @PutMapping("/{id}")
-    @SuppressWarnings("null")
     public ResponseEntity<Appointment> updateAppointment(@PathVariable Long id, @RequestBody AppointmentRequest request) {
         return appointmentRepository.findById(id)
                 .map(appointment -> {
@@ -174,7 +182,6 @@ public class AppointmentController {
     }
 
     @DeleteMapping("/{id}")
-    @SuppressWarnings("null")
     public ResponseEntity<Void> deleteAppointment(@PathVariable Long id) {
         if (!appointmentRepository.existsById(id)) {
             return ResponseEntity.notFound().build();

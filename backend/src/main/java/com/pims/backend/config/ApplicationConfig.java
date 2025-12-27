@@ -1,7 +1,5 @@
 package com.pims.backend.config;
 
-import com.pims.backend.repository.AppUserRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -13,11 +11,16 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import com.pims.backend.repository.AppUserRepository;
+
 @Configuration
-@RequiredArgsConstructor
 public class ApplicationConfig {
 
     private final AppUserRepository appUserRepository;
+
+    public ApplicationConfig(AppUserRepository appUserRepository) {
+        this.appUserRepository = appUserRepository;
+    }
 
     @Bean
     public UserDetailsService userDetailsService() {

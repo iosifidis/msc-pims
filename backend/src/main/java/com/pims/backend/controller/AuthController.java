@@ -4,70 +4,130 @@ import com.pims.backend.entity.AppUser;
 import com.pims.backend.entity.Role;
 import com.pims.backend.repository.AppUserRepository;
 import com.pims.backend.repository.RoleRepository;
+import com.pims.backend.security.JwtService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
+    private final AuthenticationManager authenticationManager;
     private final AppUserRepository appUserRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
-    public AuthController(AppUserRepository appUserRepository, RoleRepository roleRepository, PasswordEncoder passwordEncoder) {
+    public AuthController(AuthenticationManager authenticationManager,
+                          AppUserRepository appUserRepository,
+                          RoleRepository roleRepository,
+                          PasswordEncoder passwordEncoder,
+                          JwtService jwtService) {
+        this.authenticationManager = authenticationManager;
         this.appUserRepository = appUserRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
 
-    @PostMapping("/register/vet")
-    public ResponseEntity<?> registerVet(@RequestBody RegisterRequest request) {
-        if (appUserRepository.existsByUsername(request.getUsername())) {
-            return ResponseEntity.badRequest().body("Error: Username is already taken!");
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
+        if (appUserRepository.findByUsername(request.getUsername()).isPresent()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Username already exists");
         }
 
-        Role role = roleRepository.findByName("VET")
-                .orElseGet(() -> {
-                    Role newRole = new Role();
-                    newRole.setName("VET");
-                    return roleRepository.save(newRole);
-                });
+        // Default to ROLE_VET for registration
+        Role role = roleRepository.findByName("ROLE_VET")
+                .orElseThrow(() -> new RuntimeException("Role ROLE_VET not found"));
 
-        // Create new user instance and set fields manually
         AppUser user = new AppUser();
         user.setUsername(request.getUsername());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        user.setEmail(request.getEmail());
+        user.setFullName(request.getFullName());
+        user.setLicenseId(request.getLicenseId());
+        user.setAfm(request.getAfm());
+        user.setIsActive(true);
         user.setRole(role);
 
         appUserRepository.save(user);
 
-        return ResponseEntity.ok("Vet registered successfully!");
+        String token = jwtService.generateToken(user);
+        return ResponseEntity.ok(new AuthResponse(token));
     }
 
-    // Assuming a DTO class exists for the request body
-    // If this class is defined in a separate file, you can remove this inner class.
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+        try {
+            authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+            );
+        } catch (AuthenticationException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+        }
+
+        AppUser user = appUserRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String token = jwtService.generateToken(user);
+        return ResponseEntity.ok(new AuthResponse(token));
+    }
+
+    // DTO Classes
     public static class RegisterRequest {
         private String username;
         private String password;
-        // private String email;
-        // private String fullName;
+        private String email;
+        private String fullName;
+        private String licenseId;
+        private String afm;
 
-        public String getUsername() {
-            return username;
+        public String getUsername() { return username; }
+        public void setUsername(String username) { this.username = username; }
+
+        public String getPassword() { return password; }
+        public void setPassword(String password) { this.password = password; }
+
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
+
+        public String getFullName() { return fullName; }
+        public void setFullName(String fullName) { this.fullName = fullName; }
+
+        public String getLicenseId() { return licenseId; }
+        public void setLicenseId(String licenseId) { this.licenseId = licenseId; }
+
+        public String getAfm() { return afm; }
+        public void setAfm(String afm) { this.afm = afm; }
+    }
+
+    public static class LoginRequest {
+        private String username;
+        private String password;
+
+        public String getUsername() { return username; }
+        public void setUsername(String username) { this.username = username; }
+
+        public String getPassword() { return password; }
+        public void setPassword(String password) { this.password = password; }
+    }
+
+    public static class AuthResponse {
+        private String token;
+
+        public AuthResponse(String token) {
+            this.token = token;
         }
 
-        public void setUsername(String username) {
-            this.username = username;
-        }
-
-        public String getPassword() {
-            return password;
-        }
-
-        public void setPassword(String password) {
-            this.password = password;
-        }
+        public String getToken() { return token; }
+        public void setToken(String token) { this.token = token; }
     }
 }

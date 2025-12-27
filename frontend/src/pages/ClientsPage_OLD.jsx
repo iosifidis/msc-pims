@@ -2,13 +2,19 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
+// ============================================
+// MAIN COMPONENT: ClientsPage
+// ============================================
 const ClientsPage = () => {
     const { token } = useAuth();
     const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [showModal, setShowModal] = useState(false);
-    const [editingClient, setEditingClient] = useState(null);
+    const [showClientModal, setShowClientModal] = useState(false);
+    const [showPetModal, setShowPetModal] = useState(false);
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [selectedClient, setSelectedClient] = useState(null);
+    const [isReadOnly, setIsReadOnly] = useState(false);
 
     useEffect(() => {
         fetchClients();
@@ -22,40 +28,55 @@ const ClientsPage = () => {
             setClients(response.data || []);
         } catch (error) {
             console.error('Error fetching clients:', error);
+            alert('Failed to load pet owners. Please try again.');
         } finally {
             setLoading(false);
         }
     };
 
-    const openCreateModal = () => {
-        setEditingClient(null);
-        setShowModal(true);
+    const openCreateClientModal = () => {
+        setSelectedClient(null);
+        setIsReadOnly(false);
+        setShowClientModal(true);
     };
 
-    const openEditModal = (client) => {
-        setEditingClient(client);
-        setShowModal(true);
+    const openEditClientModal = (client) => {
+        setSelectedClient(client);
+        setIsReadOnly(false);
+        setShowClientModal(true);
     };
 
-    const closeModal = () => {
-        setShowModal(false);
-        setEditingClient(null);
+    const openViewClientModal = (client) => {
+        setSelectedClient(client);
+        setIsReadOnly(true);
+        setShowClientModal(true);
     };
 
-    const handleSave = () => {
+    const openPetManagerModal = (client) => {
+        setSelectedClient(client);
+        setShowPetModal(true);
+    };
+
+    const openHistoryModal = (client) => {
+        setSelectedClient(client);
+        setShowHistoryModal(true);
+    };
+
+    const closeModals = () => {
+        setShowClientModal(false);
+        setShowPetModal(false);
+        setShowHistoryModal(false);
+        setSelectedClient(null);
+        setIsReadOnly(false);
+    };
+
+    const handleSaveClient = () => {
         fetchClients();
-        closeModal();
+        closeModals();
     };
 
-    // Update a specific client in local state after pet operations
-    const updateClientInState = (updatedClient) => {
-        setClients(clients.map(c => 
-            c.id === updatedClient.id ? updatedClient : c
-        ));
-    };
-
-    const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this client?')) return;
+    const handleDeleteClient = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this pet owner? This action cannot be undone.')) return;
         
         try {
             await axios.delete(`http://localhost:8080/api/clients/${id}`, {
@@ -64,45 +85,47 @@ const ClientsPage = () => {
             fetchClients();
         } catch (error) {
             console.error('Error deleting client:', error);
-            alert('Failed to delete client');
+            alert('Failed to delete pet owner. Please try again.');
         }
     };
 
-    // Filter clients by firstName, lastName, email, phoneNumber, OR pet name
     const filteredClients = clients.filter(client => {
-        const term = searchTerm.toLowerCase();
+        const searchLower = searchTerm.toLowerCase();
+        const fullName = `${client.firstName} ${client.lastName}`.toLowerCase();
+        const email = client.email ? client.email.toLowerCase() : '';
+        const phone = client.phoneNumber ? client.phoneNumber : '';
         
-        const matchesClient = 
-            client.firstName?.toLowerCase().includes(term) ||
-            client.lastName?.toLowerCase().includes(term) ||
-            client.email?.toLowerCase().includes(term) ||
-            client.phoneNumber?.toLowerCase().includes(term);
-        
-        const matchesPet = client.pets?.some(pet => 
-            pet.name?.toLowerCase().includes(term)
+        // Check if ANY pet matches
+        const hasMatchingPet = client.pets && client.pets.some(pet => 
+            pet.name?.toLowerCase().includes(searchLower)
         );
         
-        return matchesClient || matchesPet;
+        return (
+            fullName.includes(searchLower) ||
+            email.includes(searchLower) ||
+            phone.includes(searchLower) ||
+            hasMatchingPet
+        );
     });
 
     return (
         <div className="p-8">
-            {/* Header Section */}
+            {/* Header */}
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-4xl font-bold text-gray-900">Clients</h1>
-                <div className="flex gap-4">
+                <h1 className="text-4xl font-bold text-gray-900">Pet Owners</h1>
+                <div className="flex gap-3">
                     <input 
                         type="text" 
-                        placeholder="Search clients or pets..." 
-                        className="border border-gray-300 rounded-md px-4 py-2 w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Search owners..." 
+                        className="border border-gray-300 rounded-md px-4 py-2 w-80 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                     <button 
-                        onClick={openCreateModal}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-md font-semibold transition-colors"
+                        onClick={openCreateClientModal}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-semibold transition-colors"
                     >
-                        + Add Client
+                        + Add Owner
                     </button>
                 </div>
             </div>
@@ -116,15 +139,18 @@ const ClientsPage = () => {
                         <thead>
                             <tr className="bg-gray-50 border-b border-gray-200">
                                 <th className="px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Name / Address
+                                    Owner
                                 </th>
                                 <th className="px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Contact
+                                    Phone
                                 </th>
                                 <th className="px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Pets
+                                    Email
                                 </th>
                                 <th className="px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Pets Count
+                                </th>
+                                <th className="px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">
                                     Actions
                                 </th>
                             </tr>
@@ -132,15 +158,18 @@ const ClientsPage = () => {
                         <tbody className="bg-white divide-y divide-gray-100">
                             {filteredClients.length === 0 ? (
                                 <tr>
-                                    <td colSpan="4" className="px-6 py-12 text-center text-gray-400">
-                                        {searchTerm ? 'No clients found' : 'No clients yet'}
+                                    <td colSpan="5" className="px-6 py-12 text-center text-gray-400">
+                                        {searchTerm ? 'No pet owners found' : 'No pet owners yet'}
                                     </td>
                                 </tr>
                             ) : (
                                 filteredClients.map((client) => (
                                     <tr key={client.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4">
-                                            <div className="font-semibold text-gray-900">
+                                            <div
+                                                className="font-semibold text-blue-600 hover:underline cursor-pointer"
+                                                onClick={() => openViewClientModal(client)}
+                                            >
                                                 {client.firstName} {client.lastName}
                                             </div>
                                             {client.address && (
@@ -148,42 +177,45 @@ const ClientsPage = () => {
                                             )}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="text-sm text-gray-900">{client.email}</div>
-                                            {client.phoneNumber && (
-                                                <div className="text-sm text-gray-500 mt-1">{client.phoneNumber}</div>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="text-sm text-gray-700">
-                                                {client.pets && client.pets.length > 0 ? (
-                                                    client.pets.map((pet, idx) => (
-                                                        <span key={pet.id || idx}>
-                                                            <span
-                                                                className={pet.isDeceased ? 'line-through text-red-500' : ''}
-                                                            >
-                                                                {pet.name}
-                                                            </span>
-                                                            {idx < client.pets.length - 1 && ', '}
-                                                        </span>
-                                                    ))
-                                                ) : (
-                                                    <span className="text-gray-400">—</span>
-                                                )}
+                                            <div className="text-sm text-gray-900">
+                                                {client.phoneNumber || 'N/A'}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <button
-                                                onClick={() => openEditModal(client)}
-                                                className="text-blue-600 hover:text-blue-800 font-medium text-sm mr-4"
-                                            >
-                                                Edit
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(client.id)}
-                                                className="text-red-600 hover:text-red-800 font-medium text-sm"
-                                            >
-                                                Delete
-                                            </button>
+                                            <div className="text-sm text-gray-900">{client.email || 'N/A'}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm font-semibold text-gray-700">
+                                                {client.petCount ?? client.pets?.length ?? 0}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex flex-wrap gap-2 justify-end">
+                                                <button
+                                                    onClick={() => openEditClientModal(client)}
+                                                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-semibold transition-colors"
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => openPetManagerModal(client)}
+                                                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-semibold transition-colors"
+                                                >
+                                                    Pets
+                                                </button>
+                                                <button
+                                                    onClick={() => openHistoryModal(client)}
+                                                    className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md font-semibold transition-colors"
+                                                >
+                                                    Visits
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteClient(client.id)}
+                                                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-semibold transition-colors"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -193,13 +225,29 @@ const ClientsPage = () => {
                 )}
             </div>
 
-            {/* Modal */}
-            {showModal && (
+            {/* Modals */}
+            {showClientModal && (
                 <ClientModal
-                    client={editingClient}
-                    onClose={closeModal}
-                    onSave={handleSave}
-                    onPetUpdate={updateClientInState}
+                    client={selectedClient}
+                    onClose={closeModals}
+                    onSave={handleSaveClient}
+                    token={token}
+                    readOnly={isReadOnly}
+                />
+            )}
+
+            {showPetModal && selectedClient && (
+                <PetManagerModal
+                    client={selectedClient}
+                    onClose={closeModals}
+                    token={token}
+                />
+            )}
+
+            {showHistoryModal && selectedClient && (
+                <ClientHistoryModal
+                    client={selectedClient}
+                    onClose={closeModals}
                     token={token}
                 />
             )}
@@ -207,8 +255,10 @@ const ClientsPage = () => {
     );
 };
 
-// Client Modal Component
-const ClientModal = ({ client, onClose, onSave, onPetUpdate, token }) => {
+// ============================================
+// CLIENT MODAL - Owner Details (View/Edit/Create)
+// ============================================
+const ClientModal = ({ client, onClose, onSave, token, readOnly = false }) => {
     const [formData, setFormData] = useState({
         firstName: '',
         lastName: '',
@@ -219,60 +269,19 @@ const ClientModal = ({ client, onClose, onSave, onPetUpdate, token }) => {
         adt: ''
     });
     const [saving, setSaving] = useState(false);
-    
-    // For managing existing client's pets (edit mode only)
-    const [pets, setPets] = useState([]);
-    const [showAddPet, setShowAddPet] = useState(false);
-    const [newPet, setNewPet] = useState({
-        name: '',
-        species: '',
-        breed: '',
-        sex: '',
-        microchip: ''
-    });
-    const [savingPet, setSavingPet] = useState(false);
-    const [loadingClient, setLoadingClient] = useState(false);
 
-    // Centralized function to fetch fresh client details from backend
-    const fetchClientDetails = async () => {
-        if (!client?.id) return;
-        
-        setLoadingClient(true);
-        try {
-            // CRITICAL: Authorization header included
-            const response = await axios.get(
-                `http://localhost:8080/api/clients/${client.id}`,
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
-            
-            const clientData = response.data;
-            
-            // Update form data
-            setFormData({ ...clientData });
-            
-            // Update pets list
-            setPets(clientData.pets || []);
-            
-            // Update parent state
-            if (onPetUpdate) {
-                onPetUpdate(clientData);
-            }
-        } catch (error) {
-            console.error('Error fetching client details:', error);
-            alert('Failed to load client data');
-        } finally {
-            setLoadingClient(false);
-        }
-    };
-
-    // Fetch fresh client data when modal opens in edit mode
     useEffect(() => {
-        if (client?.id) {
-            fetchClientDetails();
+        if (client) {
+            setFormData({
+                firstName: client.firstName || '',
+                lastName: client.lastName || '',
+                email: client.email || '',
+                phoneNumber: client.phoneNumber || '',
+                address: client.address || '',
+                afm: client.afm || '',
+                adt: client.adt || ''
+            });
         } else {
-            // Create mode: reset form
             setFormData({
                 firstName: '',
                 lastName: '',
@@ -282,133 +291,63 @@ const ClientModal = ({ client, onClose, onSave, onPetUpdate, token }) => {
                 afm: '',
                 adt: ''
             });
-            setPets([]);
         }
-    }, [client?.id]);
+    }, [client]);
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
-
-    const handlePetChange = (e) => {
-        setNewPet({ ...newPet, [e.target.name]: e.target.value });
-    };
-
-    const handleAddNewPet = async () => {
-        if (!newPet.name || !newPet.species) {
-            alert('Please provide at least Pet Name and Species');
-            return;
-        }
-
-        setSavingPet(true);
-        try {
-            // 1. Post pet to DB
-            await axios.post(
-                `http://localhost:8080/api/clients/${client.id}/pets`,
-                newPet,
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-            
-            // 2. Clear Pet Form
-            setNewPet({
-                name: '',
-                species: '',
-                breed: '',
-                sex: '',
-                microchip: ''
-            });
-            setShowAddPet(false);
-            
-            // 3. CRITICAL: Refresh the data!
-            await fetchClientDetails(); // ← THIS IS THE FIX
-            
-            alert('Pet added successfully!');
-        } catch (error) {
-            console.error('Error adding pet:', error);
-            alert('Failed to add pet');
-        } finally {
-            setSavingPet(false);
-        }
-    };
-
-    const handleMarkDeceased = async (petId) => {
-        if (!window.confirm('Mark this pet as deceased?')) return;
-
-        try {
-            await axios.put(
-                `http://localhost:8080/api/patients/${petId}/status`,
-                { isDeceased: true },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-            
-            // CRITICAL: Refresh the data!
-            await fetchClientDetails();
-            
-            alert('Pet marked as deceased');
-        } catch (error) {
-            console.error('Error updating pet status:', error);
-            alert('Failed to update pet status');
-        }
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (readOnly) return;
+        
         setSaving(true);
 
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             
             if (client) {
-                // Edit mode: only update client data
-                const clientData = {
-                    firstName: formData.firstName,
-                    lastName: formData.lastName,
-                    email: formData.email,
-                    phoneNumber: formData.phoneNumber,
-                    address: formData.address,
-                    afm: formData.afm,
-                    adt: formData.adt
-                };
-                await axios.put(`http://localhost:8080/api/clients/${client.id}`, clientData, config);
+                await axios.put(
+                    `http://localhost:8080/api/clients/${client.id}`,
+                    formData,
+                    config
+                );
             } else {
-                // Create mode: only create client (no pet data)
-                const payload = {
-                    firstName: formData.firstName,
-                    lastName: formData.lastName,
-                    email: formData.email,
-                    phoneNumber: formData.phoneNumber,
-                    address: formData.address,
-                    afm: formData.afm,
-                    adt: formData.adt
-                };
-                
-                await axios.post('http://localhost:8080/api/clients', payload, config);
+                await axios.post('http://localhost:8080/api/clients', formData, config);
             }
             
             onSave();
         } catch (error) {
             console.error('Error saving client:', error);
-            alert('Failed to save client');
+            const message = error.response?.status === 403 
+                ? 'Access denied. Please check your permissions.'
+                : 'Failed to save pet owner. Please try again.';
+            alert(message);
         } finally {
             setSaving(false);
         }
     };
 
+    const getModalTitle = () => {
+        if (readOnly) return 'View Pet Owner';
+        if (client) return 'Edit Pet Owner';
+        return 'Add Pet Owner';
+    };
+
     return (
         <div
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
             style={{ zIndex: 9999 }}
             onClick={onClose}
         >
             <div
-                className="bg-white rounded-xl shadow-2xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto"
+                className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Header */}
-                <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between sticky top-0">
-                    <h3 className="text-xl font-bold text-gray-900">
-                        {client ? 'Edit Client' : 'Add Client'}
-                    </h3>
+                <div className="px-6 py-4 bg-blue-50 border-b border-blue-200 flex items-center justify-between sticky top-0">
+                    <h3 className="text-xl font-bold text-gray-900">{getModalTitle()}</h3>
                     <button
                         onClick={onClose}
                         className="text-gray-500 hover:text-gray-700 text-3xl leading-none"
@@ -417,276 +356,805 @@ const ClientModal = ({ client, onClose, onSave, onPetUpdate, token }) => {
                     </button>
                 </div>
 
-                {/* Form */}
                 <form onSubmit={handleSubmit} className="p-6">
-                    {/* Client Information Section */}
-                    <div className="mb-6">
-                        <h4 className="text-lg font-semibold text-gray-900 mb-4">Client Information</h4>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    First Name *
-                                </label>
-                                <input
-                                    type="text"
-                                    name="firstName"
-                                    value={formData.firstName}
-                                    onChange={handleChange}
-                                    required
-                                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Last Name *
-                                </label>
-                                <input
-                                    type="text"
-                                    name="lastName"
-                                    value={formData.lastName}
-                                    onChange={handleChange}
-                                    required
-                                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
-                            <div className="col-span-2">
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Email *
-                                </label>
-                                <input
-                                    type="email"
-                                    name="email"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                    required
-                                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
-                            <div className="col-span-2">
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Phone Number
-                                </label>
-                                <input
-                                    type="tel"
-                                    name="phoneNumber"
-                                    value={formData.phoneNumber}
-                                    onChange={handleChange}
-                                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
-                            <div className="col-span-2">
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Address
-                                </label>
-                                <input
-                                    type="text"
-                                    name="address"
-                                    value={formData.address}
-                                    onChange={handleChange}
-                                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    AFM (Tax ID)
-                                </label>
-                                <input
-                                    type="text"
-                                    name="afm"
-                                    value={formData.afm}
-                                    onChange={handleChange}
-                                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    ADT (ID Card)
-                                </label>
-                                <input
-                                    type="text"
-                                    name="adt"
-                                    value={formData.adt}
-                                    onChange={handleChange}
-                                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                First Name *
+                            </label>
+                            <input
+                                type="text"
+                                name="firstName"
+                                value={formData.firstName}
+                                onChange={handleChange}
+                                required={!readOnly}
+                                disabled={readOnly}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Last Name *
+                            </label>
+                            <input
+                                type="text"
+                                name="lastName"
+                                value={formData.lastName}
+                                onChange={handleChange}
+                                required={!readOnly}
+                                disabled={readOnly}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            />
+                        </div>
+                        <div className="col-span-2">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Email *
+                            </label>
+                            <input
+                                type="email"
+                                name="email"
+                                value={formData.email}
+                                onChange={handleChange}
+                                required={!readOnly}
+                                disabled={readOnly}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            />
+                        </div>
+                        <div className="col-span-2">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Phone Number
+                            </label>
+                            <input
+                                type="tel"
+                                name="phoneNumber"
+                                value={formData.phoneNumber}
+                                onChange={handleChange}
+                                disabled={readOnly}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            />
+                        </div>
+                        <div className="col-span-2">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Address
+                            </label>
+                            <input
+                                type="text"
+                                name="address"
+                                value={formData.address}
+                                onChange={handleChange}
+                                disabled={readOnly}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                AFM (Tax ID)
+                            </label>
+                            <input
+                                type="text"
+                                name="afm"
+                                value={formData.afm}
+                                onChange={handleChange}
+                                disabled={readOnly}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                ADT (ID Card)
+                            </label>
+                            <input
+                                type="text"
+                                name="adt"
+                                value={formData.adt}
+                                onChange={handleChange}
+                                disabled={readOnly}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            />
                         </div>
                     </div>
 
-                    {/* Registered Pets Section - Only show when editing existing client */}
-                    {client && (
-                        <>
-                            <div className="border-t border-gray-200 my-6"></div>
-                            <div>
-                                <div className="flex items-center justify-between mb-4">
-                                    <h4 className="text-lg font-semibold text-gray-900">Registered Pets</h4>
+                    {readOnly ? (
+                        <div className="mt-6 flex justify-end">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="px-5 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md font-medium"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="mt-6 flex justify-end gap-3">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                disabled={saving}
+                                className="px-5 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 font-medium disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={saving}
+                                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium disabled:opacity-50"
+                            >
+                                {saving ? 'Saving...' : 'Save Owner'}
+                            </button>
+                        </div>
+                    )}
+                </form>
+            </div>
+        </div>
+    );
+};
+
+// ============================================
+// PET MANAGER MODAL - Full CRUD
+// ============================================
+const PetManagerModal = ({ client, onClose, token }) => {
+    const [pets, setPets] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [editingPetId, setEditingPetId] = useState(null);
+    const [petFormData, setPetFormData] = useState({
+        name: '',
+        species: '',
+        breed: '',
+        sex: '',
+        microchip: '',
+        birthDate: ''
+    });
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        if (client?.id) {
+            fetchPets();
+        }
+    }, [client?.id]);
+
+    // Calculate age from birth date
+    const calculateAge = (birthDate) => {
+        if (!birthDate) return null;
+        const birth = new Date(birthDate);
+        const today = new Date();
+        let years = today.getFullYear() - birth.getFullYear();
+        let months = today.getMonth() - birth.getMonth();
+        
+        if (months < 0 || (months === 0 && today.getDate() < birth.getDate())) {
+            years--;
+            months += 12;
+        }
+        
+        if (years > 0) {
+            return `${years} year${years > 1 ? 's' : ''}`;
+        } else if (months > 0) {
+            return `${months} month${months > 1 ? 's' : ''}`;
+        } else {
+            const days = Math.floor((today - birth) / (1000 * 60 * 60 * 24));
+            return `${days} day${days !== 1 ? 's' : ''}`;
+        }
+    };
+
+    const fetchPets = async () => {
+        setLoading(true);
+        try {
+            const response = await axios.get(
+                `http://localhost:8080/api/patients/owner/${client.id}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setPets(response.data || []);
+        } catch (error) {
+            console.error('Error fetching pets:', error);
+            alert('Failed to load pets. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handlePetFormChange = (e) => {
+        const { name, value } = e.target;
+        setPetFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const resetForm = () => {
+        setEditingPetId(null);
+        setPetFormData({
+            name: '',
+            species: '',
+            breed: '',
+            sex: '',
+            microchip: '',
+            birthDate: ''
+        });
+    };
+
+    const handleEditPet = (pet) => {
+        setEditingPetId(pet.id);
+        setPetFormData({
+            name: pet.name || '',
+            species: pet.species || '',
+            breed: pet.breed || '',
+            sex: pet.sex || '',
+            microchip: pet.microchip || '',
+            birthDate: pet.birthDate ? pet.birthDate.split('T')[0] : ''
+        });
+    };
+
+    const handleSubmitPet = async (e) => {
+        e.preventDefault();
+        
+        if (!petFormData.name || !petFormData.species) {
+            alert('Please provide at least Pet Name and Species');
+            return;
+        }
+
+        setSaving(true);
+        try {
+            if (editingPetId) {
+                // UPDATE existing pet
+                await axios.put(
+                    `http://localhost:8080/api/patients/${editingPetId}`,
+                    petFormData,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+            } else {
+                // CREATE new pet
+                await axios.post(
+                    `http://localhost:8080/api/clients/${client.id}/pets`,
+                    petFormData,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+            }
+            
+            resetForm();
+            await fetchPets();
+        } catch (error) {
+            console.error('Error saving pet:', error);
+            alert(`Failed to ${editingPetId ? 'update' : 'add'} pet. Please try again.`);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDeletePet = async (petId) => {
+        if (!window.confirm('Are you sure you want to delete this pet? This action cannot be undone.')) return;
+
+        try {
+            await axios.delete(
+                `http://localhost:8080/api/patients/${petId}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            await fetchPets();
+        } catch (error) {
+            console.error('Error deleting pet:', error);
+            alert('Failed to delete pet. Please try again.');
+        }
+    };
+
+    const handleMarkDeceased = async (petId) => {
+        if (!window.confirm('Mark this pet as deceased? This action cannot be undone.')) return;
+
+        try {
+            await axios.put(
+                `http://localhost:8080/api/patients/${petId}/status`,
+                { isDeceased: true },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            await fetchPets();
+        } catch (error) {
+            console.error('Error updating pet status:', error);
+            alert('Failed to update pet status. Please try again.');
+        }
+    };
+
+    return (
+        <div
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+            style={{ zIndex: 9999 }}
+            onClick={onClose}
+        >
+            <div
+                className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="px-6 py-4 bg-green-50 border-b border-green-200 flex items-center justify-between sticky top-0">
+                    <div>
+                        <h3 className="text-xl font-bold text-gray-900">🐾 Pet Manager</h3>
+                        <p className="text-sm text-gray-600 mt-1">
+                            {client.firstName} {client.lastName}
+                        </p>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="text-gray-500 hover:text-gray-700 text-3xl leading-none"
+                    >
+                        &times;
+                    </button>
+                </div>
+
+                <div className="p-6">
+                    {/* Add/Edit Pet Form */}
+                    <div className={`border rounded-lg p-5 mb-6 ${editingPetId ? 'bg-yellow-50 border-yellow-300' : 'bg-blue-50 border-blue-200'}`}>
+                        <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                            {editingPetId ? '✏️ Edit Pet' : '➕ Add New Pet'}
+                        </h4>
+                        <form onSubmit={handleSubmitPet}>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="col-span-2 md:col-span-1">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Pet Name *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="name"
+                                        value={petFormData.name}
+                                        onChange={handlePetFormChange}
+                                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="e.g., Rex, Luna"
+                                    />
+                                </div>
+                                <div className="col-span-2 md:col-span-1">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Birth Date
+                                    </label>
+                                    <input
+                                        type="date"
+                                        name="birthDate"
+                                        value={petFormData.birthDate}
+                                        onChange={handlePetFormChange}
+                                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Species *
+                                    </label>
+                                    <select
+                                        name="species"
+                                        value={petFormData.species}
+                                        onChange={handlePetFormChange}
+                                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="">Select Species</option>
+                                        <option value="Dog">Dog</option>
+                                        <option value="Cat">Cat</option>
+                                        <option value="Bird">Bird</option>
+                                        <option value="Rabbit">Rabbit</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Sex
+                                    </label>
+                                    <select
+                                        name="sex"
+                                        value={petFormData.sex}
+                                        onChange={handlePetFormChange}
+                                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="">Select Sex</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Breed
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="breed"
+                                        value={petFormData.breed}
+                                        onChange={handlePetFormChange}
+                                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="e.g., Golden Retriever"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Microchip Number
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="microchip"
+                                        value={petFormData.microchip}
+                                        onChange={handlePetFormChange}
+                                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="15-digit number"
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex justify-end mt-4 gap-3">
+                                {/* Cancel Button (Only in Edit Mode) */}
+                                {editingPetId && (
                                     <button
                                         type="button"
-                                        onClick={() => setShowAddPet(!showAddPet)}
-                                        className="text-sm bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium transition-colors"
+                                        onClick={resetForm}
+                                        className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
                                     >
-                                        {showAddPet ? 'Cancel' : '+ Add Pet'}
+                                        Cancel
                                     </button>
-                                </div>
+                                )}
+                                
+                                {/* Save / Add Button */}
+                                <button
+                                    type="submit"
+                                    disabled={saving}
+                                    className={`${
+                                        editingPetId 
+                                            ? 'bg-green-600 hover:bg-green-700' 
+                                            : 'bg-blue-600 hover:bg-blue-700'
+                                    } text-white font-bold py-2 px-4 rounded shadow-md disabled:opacity-50`}
+                                >
+                                    {saving 
+                                        ? (editingPetId ? 'Saving...' : 'Adding...') 
+                                        : (editingPetId ? 'Save' : '+ Add Pet')
+                                    }
+                                </button>
+                            </div>
+                        </form>
+                    </div>
 
-                                {/* Existing Pets List */}
-                                {pets.length > 0 ? (
-                                    <div className="space-y-3 mb-4">
-                                        {pets.map((pet, index) => (
-                                            <div
-                                                key={pet.id || index}
-                                                className={`border rounded-md p-3 flex items-center justify-between ${
-                                                    pet.isDeceased 
-                                                        ? 'bg-red-50 border-red-200' 
-                                                        : 'bg-gray-50 border-gray-200'
-                                                }`}
-                                            >
+                    {/* Pets List */}
+                    <div>
+                        <h4 className="text-lg font-semibold text-gray-900 mb-4">Registered Pets</h4>
+                        
+                        {loading ? (
+                            <div className="text-center py-8 text-gray-500">Loading pets...</div>
+                        ) : pets.length === 0 ? (
+                            <div className="text-center py-8 text-gray-400">No pets registered yet</div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {pets.map((pet) => {
+                                    const age = calculateAge(pet.birthDate);
+                                    return (
+                                        <div
+                                            key={pet.id}
+                                            className={`border rounded-lg p-4 ${
+                                                pet.isDeceased 
+                                                    ? 'bg-red-50 border-red-300 opacity-70' 
+                                                    : editingPetId === pet.id
+                                                        ? 'bg-yellow-50 border-yellow-400 ring-2 ring-yellow-400'
+                                                        : 'bg-white border-gray-200 hover:shadow-md'
+                                            } transition-shadow`}
+                                        >
+                                            <div className="flex items-start justify-between">
                                                 <div className="flex-1">
-                                                    <div className={`font-semibold ${
-                                                        pet.isDeceased ? 'text-red-700 line-through' : 'text-gray-900'
-                                                    }`}>
-                                                        {pet.name}
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <h5 className={`text-lg font-bold ${
+                                                            pet.isDeceased ? 'text-red-700 line-through' : 'text-gray-900'
+                                                        }`}>
+                                                            {pet.name}
+                                                        </h5>
+                                                        {age && !pet.isDeceased && (
+                                                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                                                {age} old
+                                                            </span>
+                                                        )}
                                                         {pet.isDeceased && (
-                                                            <span className="ml-2 text-xs font-normal text-red-600">
-                                                                (Deceased)
+                                                            <span className="text-xs font-bold text-white bg-red-600 px-2 py-1 rounded">
+                                                                DECEASED
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <div className="text-sm text-gray-600">
-                                                        {pet.species} {pet.breed && `• ${pet.breed}`}
+                                                    <div className="text-sm text-gray-700 mt-2 space-y-1">
+                                                        <div><strong>Species:</strong> {pet.species}</div>
+                                                        {pet.breed && <div><strong>Breed:</strong> {pet.breed}</div>}
+                                                        {pet.sex && <div><strong>Sex:</strong> {pet.sex}</div>}
+                                                        {pet.birthDate && (
+                                                            <div><strong>DOB:</strong> {new Date(pet.birthDate).toLocaleDateString()}</div>
+                                                        )}
+                                                        {pet.microchip && (
+                                                            <div className="text-xs text-gray-500 mt-2">
+                                                                Microchip: {pet.microchip}
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    {pet.sex && (
-                                                        <div className="text-xs text-gray-500 mt-1">{pet.sex}</div>
-                                                    )}
-                                                </div>
-                                                <div className="ml-4">
-                                                    {pet.isDeceased ? (
-                                                        <span className="text-xs text-red-600 font-medium px-3 py-1 bg-red-100 rounded">
-                                                            Rest in Peace
-                                                        </span>
-                                                    ) : (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleMarkDeceased(pet.id)}
-                                                            className="text-xs text-white bg-red-600 hover:bg-red-700 px-3 py-1 rounded transition-colors"
-                                                        >
-                                                            Mark Deceased
-                                                        </button>
-                                                    )}
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-sm text-gray-500 mb-4">No pets registered yet</p>
-                                )}
-
-                                {/* Add New Pet Form */}
-                                {showAddPet && (
-                                    <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mt-4">
-                                        <h5 className="text-md font-semibold text-gray-900 mb-3">New Pet Details</h5>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div className="col-span-2">
-                                                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                                                    Pet Name *
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    name="name"
-                                                    value={newPet.name}
-                                                    onChange={handlePetChange}
-                                                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    placeholder="e.g., Rex"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                                                    Species *
-                                                </label>
-                                                <select
-                                                    name="species"
-                                                    value={newPet.species}
-                                                    onChange={handlePetChange}
-                                                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                >
-                                                    <option value="">Select</option>
-                                                    <option value="Dog">Dog</option>
-                                                    <option value="Cat">Cat</option>
-                                                    <option value="Other">Other</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                                                    Sex
-                                                </label>
-                                                <select
-                                                    name="sex"
-                                                    value={newPet.sex}
-                                                    onChange={handlePetChange}
-                                                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                >
-                                                    <option value="">Select</option>
-                                                    <option value="Male">Male</option>
-                                                    <option value="Female">Female</option>
-                                                </select>
-                                            </div>
-                                            <div className="col-span-2">
-                                                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                                                    Breed
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    name="breed"
-                                                    value={newPet.breed}
-                                                    onChange={handlePetChange}
-                                                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    placeholder="e.g., Golden Retriever"
-                                                />
-                                            </div>
-                                            <div className="col-span-2">
-                                                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                                                    Microchip Number
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    name="microchip"
-                                                    value={newPet.microchip}
-                                                    onChange={handlePetChange}
-                                                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    placeholder="15-digit microchip number"
-                                                />
-                                            </div>
+                                            
+                                            {/* Action Buttons */}
+                                            {!pet.isDeceased && (
+                                                <div className="mt-4 pt-3 border-t border-gray-200 flex flex-wrap gap-2">
+                                                    <button
+                                                        onClick={() => handleEditPet(pet)}
+                                                        className="text-xs text-white bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded font-medium transition-colors"
+                                                    >
+                                                        ✏️ Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeletePet(pet.id)}
+                                                        className="text-xs text-white bg-gray-600 hover:bg-gray-700 px-3 py-2 rounded font-medium transition-colors"
+                                                    >
+                                                        🗑️ Delete
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleMarkDeceased(pet.id)}
+                                                        className="text-xs text-white bg-red-600 hover:bg-red-700 px-3 py-2 rounded font-medium transition-colors"
+                                                    >
+                                                        ☠️ Mark Deceased
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
-                                        <button
-                                            type="button"
-                                            onClick={handleAddNewPet}
-                                            disabled={savingPet}
-                                            className="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium text-sm disabled:opacity-50"
-                                        >
-                                            {savingPet ? 'Adding Pet...' : 'Add Pet'}
-                                        </button>
-                                    </div>
-                                )}
+                                    );
+                                })}
                             </div>
-                        </>
-                    )}
+                        )}
+                    </div>
 
-                    {/* Footer */}
-                    <div className="mt-6 flex justify-end gap-3">
+                    <div className="mt-6 flex justify-end">
                         <button
-                            type="button"
                             onClick={onClose}
+                            className="px-5 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md font-medium"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ============================================
+// CLIENT HISTORY MODAL - View & Edit Visits
+// ============================================
+const ClientHistoryModal = ({ client, onClose, token }) => {
+    const [records, setRecords] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [selectedRecord, setSelectedRecord] = useState(null);
+    const [isEditRecordModalOpen, setIsEditRecordModalOpen] = useState(false);
+
+    useEffect(() => {
+        if (client?.id) {
+            fetchRecords();
+        }
+    }, [client?.id]);
+
+    const fetchRecords = async () => {
+        setLoading(true);
+        try {
+            const response = await axios.get(
+                `http://localhost:8080/api/medical-records/owner/${client.id}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setRecords(response.data || []);
+        } catch (error) {
+            console.error('Error fetching visit history:', error);
+            alert('Failed to load visit history. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleEditClick = (record) => {
+        setSelectedRecord(record);
+        setIsEditRecordModalOpen(true);
+    };
+
+    const handleRecordSaved = () => {
+        setIsEditRecordModalOpen(false);
+        setSelectedRecord(null);
+        fetchRecords(); // Refresh list
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
+        return new Date(dateString).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    };
+
+    return (
+        <>
+            <div
+                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+                style={{ zIndex: 9999 }}
+                onClick={onClose}
+            >
+                <div
+                    className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="px-6 py-4 bg-purple-50 border-b border-purple-200 flex items-center justify-between sticky top-0">
+                        <div>
+                            <h3 className="text-xl font-bold text-gray-900">📋 Medical History</h3>
+                            <p className="text-sm text-gray-600 mt-1">
+                                {client.firstName} {client.lastName}
+                            </p>
+                        </div>
+                        <button
+                            onClick={onClose}
+                            className="text-gray-500 hover:text-gray-700 text-3xl leading-none"
+                        >
+                            &times;
+                        </button>
+                    </div>
+
+                    <div className="p-6">
+                        {loading ? (
+                            <div className="text-center py-12 text-gray-500">Loading visit history...</div>
+                        ) : records.length === 0 ? (
+                            <div className="text-center py-12 text-gray-400">No medical records found</div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse">
+                                    <thead>
+                                        <tr className="bg-gray-50 border-b-2 border-gray-200">
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pet Name</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Diagnosis</th>
+                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {records.map((record) => (
+                                            <tr key={record.id} className="hover:bg-gray-50 transition-colors">
+                                                <td className="px-4 py-3 text-sm text-gray-900">
+                                                    {formatDate(record.visitDate || record.createdAt)}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                                    {record.patient?.name || 'Unknown'}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-gray-600">
+                                                    {record.appointment?.type || record.appointmentType || 'Visit'}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-gray-700 truncate max-w-xs">
+                                                    {record.diagnosis || 'No diagnosis'}
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <button
+                                                        onClick={() => handleEditClick(record)}
+                                                        className="text-blue-600 hover:text-blue-800 p-1"
+                                                        title="Edit Record"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                        </svg>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+
+                        <div className="mt-6 flex justify-end">
+                            <button
+                                onClick={onClose}
+                                className="px-5 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md font-medium"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Medical Record Details Modal */}
+            {isEditRecordModalOpen && selectedRecord && (
+                <MedicalRecordModal
+                    record={selectedRecord}
+                    onClose={() => setIsEditRecordModalOpen(false)}
+                    onSave={handleRecordSaved}
+                    token={token}
+                />
+            )}
+        </>
+    );
+};
+
+// ============================================
+// MEDICAL RECORD MODAL - Edit Record
+// ============================================
+const MedicalRecordModal = ({ record, onClose, onSave, token }) => {
+    const [formData, setFormData] = useState({
+        weight: '',
+        temperature: '',
+        symptoms: '',
+        diagnosis: '',
+        treatment: ''
+    });
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        if (record) {
+            setFormData({
+                weight: record.weight || '',
+                temperature: record.temperature || '',
+                symptoms: record.symptoms || '',
+                diagnosis: record.diagnosis || '',
+                treatment: record.treatment || ''
+            });
+        }
+    }, [record]);
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        try {
+            const payload = {
+                id: record.id,
+                weight: parseFloat(formData.weight),
+                temperature: parseFloat(formData.temperature),
+                symptoms: formData.symptoms,
+                diagnosis: formData.diagnosis,
+                treatment: formData.treatment
+            };
+            
+            await axios.put(
+                `http://localhost:8080/api/medical-records/${record.id}`,
+                payload,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            
+            onSave();
+        } catch (error) {
+            console.error('Error updating record:', error);
+            alert('Failed to update medical record.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000] p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-8">
+                <div className="px-8 py-5 border-b border-gray-200 flex justify-between items-center bg-gray-50 mb-6 -mx-8 -mt-8 rounded-t-lg">
+                    <h2 className="text-2xl font-bold text-gray-900">Edit Medical Record</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl font-bold">×</button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="py-2 overflow-y-auto flex-1 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
+                            <input type="number" name="weight" value={formData.weight} onChange={handleChange} className="w-full border border-gray-300 rounded-md px-3 py-2" step="0.1" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Temperature (°C)</label>
+                            <input type="number" name="temperature" value={formData.temperature} onChange={handleChange} className="w-full border border-gray-300 rounded-md px-3 py-2" step="0.1" />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Symptoms</label>
+                        <textarea name="symptoms" value={formData.symptoms} onChange={handleChange} rows="3" className="w-full border border-gray-300 rounded-md px-3 py-2 resize-none" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Diagnosis</label>
+                        <textarea name="diagnosis" value={formData.diagnosis} onChange={handleChange} rows="3" className="w-full border border-gray-300 rounded-md px-3 py-2 resize-none" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Treatment</label>
+                        <textarea name="treatment" value={formData.treatment} onChange={handleChange} rows="3" className="w-full border border-gray-300 rounded-md px-3 py-2 resize-none" />
+                    </div>
+
+                    <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-100">
+                        <button 
+                            type="button"
+                            onClick={onClose} 
+                            className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md font-bold transition-colors"
                             disabled={saving}
-                            className="px-5 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 font-medium disabled:opacity-50"
                         >
                             Cancel
                         </button>
-                        <button
-                            type="submit"
+                        <button 
+                            type="submit" 
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-bold transition-colors"
                             disabled={saving}
-                            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium disabled:opacity-50"
                         >
-                            {saving ? 'Saving...' : 'Save'}
+                            {saving ? 'Saving...' : 'Save Changes'}
                         </button>
                     </div>
                 </form>

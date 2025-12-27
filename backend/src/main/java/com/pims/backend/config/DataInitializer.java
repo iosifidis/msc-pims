@@ -1,11 +1,22 @@
 package com.pims.backend.config;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+
 import com.pims.backend.entity.AppUser;
 import com.pims.backend.entity.Appointment;
 import com.pims.backend.entity.Client;
 import com.pims.backend.entity.Patient;
 import com.pims.backend.entity.Role;
 import com.pims.backend.enums.AppointmentStatus;
+import com.pims.backend.enums.AppointmentType;
 import com.pims.backend.enums.Sex;
 import com.pims.backend.enums.Species;
 import com.pims.backend.repository.AppUserRepository;
@@ -13,12 +24,6 @@ import com.pims.backend.repository.AppointmentRepository;
 import com.pims.backend.repository.ClientRepository;
 import com.pims.backend.repository.PatientRepository;
 import com.pims.backend.repository.RoleRepository;
-import org.springframework.boot.CommandLineRunner;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Component;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
@@ -30,7 +35,6 @@ public class DataInitializer implements CommandLineRunner {
     private final AppointmentRepository appointmentRepository;
     private final PasswordEncoder passwordEncoder;
 
-    // Explicit Constructor Injection
     public DataInitializer(AppUserRepository appUserRepository,
                            RoleRepository roleRepository,
                            ClientRepository clientRepository,
@@ -47,92 +51,112 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        // Initialize Roles
-        if (roleRepository.count() == 0) {
-            List<String> roles = List.of("ADMIN", "VET", "RECEPTIONIST", "OWNER");
-            for (String roleName : roles) {
-                Role role = new Role();
-                role.setName(roleName);
-                roleRepository.save(role);
-            }
+        // Prevent duplication on restart
+        if (roleRepository.count() > 0) {
+            return;
         }
 
-        // Create Data only if users table is empty
-        if (appUserRepository.count() == 0) {
-            Role vetRole = roleRepository.findByName("VET")
-                    .orElseThrow(() -> new RuntimeException("Role VET not found"));
+        // 1. Create Roles
+        Role vetRole = new Role();
+        vetRole.setName("ROLE_VET");
+        vetRole.setPermissions(new HashSet<>(Set.of("READ_PATIENT", "WRITE_PATIENT", "CREATE_APPOINTMENT")));
+        roleRepository.save(vetRole);
 
-            // --- Create Vets (Using Setters) ---
-            AppUser vet1 = new AppUser();
-            vet1.setUsername("vet1");
-            vet1.setPasswordHash(passwordEncoder.encode("password"));
-            vet1.setFullName("Dr. John Smith");
-            vet1.setEmail("vet1@pims.com");
-            vet1.setRole(vetRole);
-            vet1.setIsActive(true);
-            appUserRepository.save(vet1);
+        Role adminRole = new Role();
+        adminRole.setName("ROLE_ADMIN");
+        adminRole.setPermissions(new HashSet<>(Set.of("ADMIN_ACCESS")));
+        roleRepository.save(adminRole);
 
-            AppUser vet2 = new AppUser();
-            vet2.setUsername("vet2");
-            vet2.setPasswordHash(passwordEncoder.encode("password"));
-            vet2.setFullName("Dr. Jane Doe");
-            vet2.setEmail("vet2@pims.com");
-            vet2.setRole(vetRole);
-            vet2.setIsActive(true);
-            appUserRepository.save(vet2);
+        // 2. Create 2 Vets
+        AppUser vet1 = new AppUser();
+        vet1.setUsername("vet1");
+        vet1.setPasswordHash(passwordEncoder.encode("password"));
+        vet1.setEmail("vet1@pims.com");
+        vet1.setFullName("Dr. John Doe");
+        vet1.setLicenseId("LIC-001");
+        vet1.setAfm("123456789");
+        vet1.setIsActive(true);
+        vet1.setRole(vetRole);
+        appUserRepository.save(vet1);
 
-            // --- Create Clients (Using Setters) ---
-            Client client1 = new Client();
-            client1.setFirstName("Alice");
-            client1.setLastName("Johnson");
-            client1.setEmail("alice@example.com");
-            client1.setPhone("1112223333");
-            clientRepository.save(client1);
+        AppUser vet2 = new AppUser();
+        vet2.setUsername("vet2");
+        vet2.setPasswordHash(passwordEncoder.encode("password"));
+        vet2.setEmail("vet2@pims.com");
+        vet2.setFullName("Dr. Jane Smith");
+        vet2.setLicenseId("LIC-002");
+        vet2.setAfm("987654321");
+        vet2.setIsActive(true);
+        vet2.setRole(vetRole);
+        appUserRepository.save(vet2);
 
-            Client client2 = new Client();
-            client2.setFirstName("Bob");
-            client2.setLastName("Williams");
-            client2.setEmail("bob@example.com");
-            client2.setPhone("4445556666");
-            clientRepository.save(client2);
+        // 3. Create 2 Clients
+        Client client1 = new Client();
+        client1.setFirstName("Alice");
+        client1.setLastName("Johnson");
+        client1.setEmail("alice@example.com");
+        client1.setPhone("555-0101");
+        client1.setAddress("123 Maple St");
+        client1.setAfm("111222333");
+        client1.setGdprConsent(true);
+        client1.setBalance(BigDecimal.ZERO);
+        clientRepository.save(client1);
 
-            // --- Create Patients (Using Setters & Enums) ---
-            Patient patient1 = new Patient();
-            patient1.setName("Rex");
-            patient1.setSpecies(Species.DOG);
-            patient1.setBreed("German Shepherd");
-            patient1.setSex(Sex.MALE);
-            patient1.setOwner(client1);
-            patientRepository.save(patient1);
+        Client client2 = new Client();
+        client2.setFirstName("Bob");
+        client2.setLastName("Williams");
+        client2.setEmail("bob@example.com");
+        client2.setPhone("555-0102");
+        client2.setAddress("456 Oak Ave");
+        client2.setAfm("444555666");
+        client2.setGdprConsent(true);
+        client2.setBalance(BigDecimal.ZERO);
+        clientRepository.save(client2);
 
-            Patient patient2 = new Patient();
-            patient2.setName("Luna");
-            patient2.setSpecies(Species.CAT);
-            patient2.setBreed("Siamese");
-            patient2.setSex(Sex.FEMALE);
-            patient2.setOwner(client2);
-            patientRepository.save(patient2);
+        // 4. Create Patients (1 for each client)
+        Patient patient1 = new Patient();
+        patient1.setName("Buddy");
+        patient1.setSpecies(Species.DOG);
+        patient1.setBreed("Golden Retriever");
+        patient1.setSex(Sex.MALE);
+        patient1.setBirthDate(LocalDate.of(2020, 5, 10));
+        patient1.setWeight(25.5f);
+        patient1.setMicrochipNumber("900111222333444");
+        patient1.setOwner(client1);
+        patientRepository.save(patient1);
 
-            // --- Create Appointments (Using Setters & Enums) ---
-            Appointment appt1 = new Appointment();
-            appt1.setClient(client1);
-            appt1.setPatient(patient1);
-            appt1.setVet(vet1);
-            appt1.setStartTime(LocalDateTime.now().plusDays(1).withHour(9).withMinute(0));
-            appt1.setEndTime(LocalDateTime.now().plusDays(1).withHour(9).withMinute(30));
-            appt1.setReason("Annual Vaccination");
-            appt1.setStatus(AppointmentStatus.SCHEDULED);
-            appointmentRepository.save(appt1);
+        Patient patient2 = new Patient();
+        patient2.setName("Whiskers");
+        patient2.setSpecies(Species.CAT);
+        patient2.setBreed("Siamese");
+        patient2.setSex(Sex.FEMALE);
+        patient2.setBirthDate(LocalDate.of(2019, 8, 15));
+        patient2.setWeight(4.2f);
+        patient2.setMicrochipNumber("900555666777888");
+        patient2.setOwner(client2);
+        patientRepository.save(patient2);
 
-            Appointment appt2 = new Appointment();
-            appt2.setClient(client2);
-            appt2.setPatient(patient2);
-            appt2.setVet(vet2);
-            appt2.setStartTime(LocalDateTime.now().plusDays(1).withHour(10).withMinute(0));
-            appt2.setEndTime(LocalDateTime.now().plusDays(1).withHour(10).withMinute(30));
-            appt2.setReason("General Checkup");
-            appt2.setStatus(AppointmentStatus.SCHEDULED);
-            appointmentRepository.save(appt2);
-        }
+        // 5. Create Appointments
+        Appointment appt1 = new Appointment();
+        appt1.setStartTime(LocalDateTime.now().plusDays(1).withHour(10).withMinute(0));
+        appt1.setEndTime(LocalDateTime.now().plusDays(1).withHour(10).withMinute(30));
+        appt1.setStatus(AppointmentStatus.SCHEDULED);
+        appt1.setType(AppointmentType.CHECKUP);
+        appt1.setReason("Annual Checkup");
+        appt1.setClient(client1);
+        appt1.setPatient(patient1);
+        appt1.setVet(vet1);
+        appointmentRepository.save(appt1);
+
+        Appointment appt2 = new Appointment();
+        appt2.setStartTime(LocalDateTime.now().plusDays(2).withHour(14).withMinute(0));
+        appt2.setEndTime(LocalDateTime.now().plusDays(2).withHour(14).withMinute(30));
+        appt2.setStatus(AppointmentStatus.SCHEDULED);
+        appt2.setType(AppointmentType.VACCINATION);
+        appt2.setReason("Rabies Vaccination");
+        appt2.setClient(client2);
+        appt2.setPatient(patient2);
+        appt2.setVet(vet2);
+        appointmentRepository.save(appt2);
     }
 }

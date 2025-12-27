@@ -17,14 +17,15 @@ import com.pims.backend.enums.Sex;
 import com.pims.backend.enums.Species;
 import com.pims.backend.repository.PatientRepository;
 
-import lombok.RequiredArgsConstructor;
-
 @RestController
 @RequestMapping("/api/patients")
-@RequiredArgsConstructor
 public class PatientController {
 
     private final PatientRepository patientRepository;
+
+    public PatientController(PatientRepository patientRepository) {
+        this.patientRepository = patientRepository;
+    }
 
     /**
      * Get all patients

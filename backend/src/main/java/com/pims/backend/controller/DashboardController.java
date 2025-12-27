@@ -1,15 +1,5 @@
 package com.pims.backend.controller;
 
-import com.pims.backend.entity.Appointment;
-import com.pims.backend.repository.AppointmentRepository;
-import com.pims.backend.repository.PatientRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -19,14 +9,28 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.pims.backend.entity.Appointment;
+import com.pims.backend.repository.AppointmentRepository;
+import com.pims.backend.repository.PatientRepository;
+
 @RestController
 @RequestMapping("/api/dashboard")
 @CrossOrigin(origins = "http://localhost:5173")
-@RequiredArgsConstructor
 public class DashboardController {
 
     private final PatientRepository patientRepository;
     private final AppointmentRepository appointmentRepository;
+
+    public DashboardController(PatientRepository patientRepository, AppointmentRepository appointmentRepository) {
+        this.patientRepository = patientRepository;
+        this.appointmentRepository = appointmentRepository;
+    }
 
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getDashboardStats() {

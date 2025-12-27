@@ -30,7 +30,6 @@ public class ClientController {
 
     @PostMapping
     public ResponseEntity<Client> createClient(@RequestBody ClientRequest request) {
-        // Create new Client instance and set fields manually
         Client client = new Client();
         client.setFirstName(request.getFirstName());
         client.setLastName(request.getLastName());
@@ -45,7 +44,6 @@ public class ClientController {
     @PostMapping("/{clientId}/patients")
     public ResponseEntity<Patient> addPatient(@PathVariable Long clientId, @RequestBody PatientRequest request) {
         return clientRepository.findById(clientId).map(client -> {
-            // Create new Patient instance and set fields manually
             Patient patient = new Patient();
             patient.setName(request.getName());
             if (request.getSpecies() != null) {
@@ -61,8 +59,6 @@ public class ClientController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    // Assuming DTO classes exist for the request bodies.
-    // If these are defined in separate files, you can remove these inner classes.
     public static class ClientRequest {
         private String firstName;
         private String lastName;
