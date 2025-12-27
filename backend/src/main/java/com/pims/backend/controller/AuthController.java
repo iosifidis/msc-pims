@@ -1,5 +1,6 @@
 package com.pims.backend.controller;
 
+import com.pims.backend.dto.auth.RegisterRequest;
 import com.pims.backend.entity.AppUser;
 import com.pims.backend.entity.Role;
 import com.pims.backend.repository.AppUserRepository;
@@ -39,29 +40,30 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<?> registerVet(@RequestBody RegisterRequest request) {
         if (appUserRepository.findByUsername(request.getUsername()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Username already exists");
+            return ResponseEntity.badRequest().body("Username already exists");
         }
 
-        // Default to ROLE_VET for registration
-        Role role = roleRepository.findByName("ROLE_VET")
-                .orElseThrow(() -> new RuntimeException("Role ROLE_VET not found"));
+        // Default to VET for registration
+        Role role = roleRepository.findByName("VET").orElse(null);
+        if (role == null) {
+            role = new Role();
+            role.setName("VET");
+            roleRepository.save(role);
+        }
 
         AppUser user = new AppUser();
         user.setUsername(request.getUsername());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setEmail(request.getEmail());
-        user.setFullName(request.getFullName());
-        user.setLicenseId(request.getLicenseId());
-        user.setAfm(request.getAfm());
+        user.setFullName(request.getFirstName() + " " + request.getLastName());
         user.setIsActive(true);
         user.setRole(role);
 
         appUserRepository.save(user);
 
-        String token = jwtService.generateToken(user);
-        return ResponseEntity.ok(new AuthResponse(token));
+        return ResponseEntity.ok("User registered successfully");
     }
 
     @PostMapping("/login")
@@ -82,33 +84,6 @@ public class AuthController {
     }
 
     // DTO Classes
-    public static class RegisterRequest {
-        private String username;
-        private String password;
-        private String email;
-        private String fullName;
-        private String licenseId;
-        private String afm;
-
-        public String getUsername() { return username; }
-        public void setUsername(String username) { this.username = username; }
-
-        public String getPassword() { return password; }
-        public void setPassword(String password) { this.password = password; }
-
-        public String getEmail() { return email; }
-        public void setEmail(String email) { this.email = email; }
-
-        public String getFullName() { return fullName; }
-        public void setFullName(String fullName) { this.fullName = fullName; }
-
-        public String getLicenseId() { return licenseId; }
-        public void setLicenseId(String licenseId) { this.licenseId = licenseId; }
-
-        public String getAfm() { return afm; }
-        public void setAfm(String afm) { this.afm = afm; }
-    }
-
     public static class LoginRequest {
         private String username;
         private String password;

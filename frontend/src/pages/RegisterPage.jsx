@@ -7,14 +7,15 @@ const RegisterPage = () => {
   const { register } = useAuth();
   
   const [formData, setFormData] = useState({
-    firstname: "",
-    lastname: "",
+    firstName: "",
+    lastName: "",
     email: "",
     username: "",
     password: "",
   });
   
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -27,12 +28,13 @@ const RegisterPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setSuccess("");
     
     try {
       // Prepare payload matching backend DTO
       const payload = {
-        firstname: formData.firstname,
-        lastname: formData.lastname,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         email: formData.email,
         username: formData.username,
         password: formData.password,
@@ -41,7 +43,10 @@ const RegisterPage = () => {
       
       console.log("Sending registration payload:", payload);
       await register(payload);
-      navigate("/login");
+      setSuccess("Registration successful! Redirecting to login...");
+      setTimeout(() => {
+        navigate("/login");
+      }, 2000);
     } catch (err) {
       console.error("Registration error:", err);
       console.error("Error response data:", err.response?.data);
@@ -58,6 +63,13 @@ const RegisterPage = () => {
           <p className="text-gray-600 text-sm">Create Your Account</p>
         </div>
 
+        {/* Success Message */}
+        {success && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 text-sm text-center">
+            {success}
+          </div>
+        )}
+
         {/* Error Message */}
         {error && (
           <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded mb-4 text-sm text-center">
@@ -70,16 +82,16 @@ const RegisterPage = () => {
           {/* First Name */}
           <div>
             <label 
-              htmlFor="firstname" 
+              htmlFor="firstName" 
               className="block text-sm font-medium text-gray-700"
             >
               First Name
             </label>
             <input
               type="text"
-              id="firstname"
-              name="firstname"
-              value={formData.firstname}
+              id="firstName"
+              name="firstName"
+              value={formData.firstName}
               onChange={handleChange}
               className="w-full border border-gray-300 p-2 rounded mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter your first name"
@@ -90,16 +102,16 @@ const RegisterPage = () => {
           {/* Last Name */}
           <div>
             <label 
-              htmlFor="lastname" 
+              htmlFor="lastName" 
               className="block text-sm font-medium text-gray-700"
             >
               Last Name
             </label>
             <input
               type="text"
-              id="lastname"
-              name="lastname"
-              value={formData.lastname}
+              id="lastName"
+              name="lastName"
+              value={formData.lastName}
               onChange={handleChange}
               className="w-full border border-gray-300 p-2 rounded mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter your last name"

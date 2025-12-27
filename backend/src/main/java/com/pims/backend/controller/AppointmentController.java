@@ -1,5 +1,7 @@
 package com.pims.backend.controller;
 
+import java.security.Principal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -59,6 +61,20 @@ public class AppointmentController {
         return appointmentRepository.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/next")
+    public ResponseEntity<Appointment> getNextAppointment(Principal principal) {
+        AppUser vet = appUserRepository.findByUsername(principal.getName())
+                .orElseThrow(() -> new RuntimeException("Vet not found"));
+
+        Appointment nextAppointment = appointmentRepository.findFirstByVetIdAndStartTimeAfterOrderByStartTimeAsc(
+                vet.getId(), LocalDateTime.now());
+
+        if (nextAppointment == null) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(nextAppointment);
     }
 
     @GetMapping("/search")
