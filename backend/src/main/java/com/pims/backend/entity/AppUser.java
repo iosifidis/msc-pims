@@ -1,14 +1,22 @@
 package com.pims.backend.entity;
 
-import jakarta.persistence.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "app_users")
@@ -26,12 +34,11 @@ public class AppUser implements UserDetails {
 
     private String email;
 
-    @Column(name = "full_name")
-    private String fullName;
+    @Column(name = "first_name")
+    private String firstName;
 
-    private String licenseId;
-
-    private String afm;
+    @Column(name = "last_name")
+    private String lastName;
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
@@ -43,14 +50,13 @@ public class AppUser implements UserDetails {
     public AppUser() {
     }
 
-    public AppUser(Long id, String username, String passwordHash, String email, String fullName, String licenseId, String afm, Boolean isActive, Role role) {
+    public AppUser(Long id, String username, String passwordHash, String email, String firstName, String lastName, Boolean isActive, Role role) {
         this.id = id;
         this.username = username;
         this.passwordHash = passwordHash;
         this.email = email;
-        this.fullName = fullName;
-        this.licenseId = licenseId;
-        this.afm = afm;
+        this.firstName = firstName;
+        this.lastName = lastName;
         this.isActive = isActive;
         this.role = role;
     }
@@ -103,14 +109,11 @@ public class AppUser implements UserDetails {
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
 
-    public String getFullName() { return fullName; }
-    public void setFullName(String fullName) { this.fullName = fullName; }
+    public String getFirstName() { return firstName; }
+    public void setFirstName(String firstName) { this.firstName = firstName; }
 
-    public String getLicenseId() { return licenseId; }
-    public void setLicenseId(String licenseId) { this.licenseId = licenseId; }
-
-    public String getAfm() { return afm; }
-    public void setAfm(String afm) { this.afm = afm; }
+    public String getLastName() { return lastName; }
+    public void setLastName(String lastName) { this.lastName = lastName; }
 
     public Boolean getIsActive() { return isActive; }
     public void setIsActive(Boolean isActive) { this.isActive = isActive; }

@@ -30,5 +30,5 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
 
     List<Appointment> findByPatientId(Long patientId);
 
-    Appointment findFirstByVetIdAndStartTimeAfterOrderByStartTimeAsc(Long vetId, LocalDateTime now);
+    Appointment findFirstByVetIdAndStartTimeAfterOrderByStartTimeAsc(Long vetId, LocalDateTime startTime);
 }

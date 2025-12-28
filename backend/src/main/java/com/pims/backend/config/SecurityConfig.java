@@ -1,6 +1,7 @@
 package com.pims.backend.config;
 
-import com.pims.backend.security.JwtAuthenticationFilter;
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -15,7 +16,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.List;
+import com.pims.backend.security.JwtAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -36,8 +37,11 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/auth/**").permitAll() // CRITICAL: Allows Login/Register
                 .requestMatchers("/error").permitAll()
+                .requestMatchers("/api/clients/**").authenticated()
+                .requestMatchers("/api/patients/**").authenticated()
+                .requestMatchers("/api/dashboard/**").authenticated()
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session

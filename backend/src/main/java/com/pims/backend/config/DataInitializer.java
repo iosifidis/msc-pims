@@ -72,9 +72,8 @@ public class DataInitializer implements CommandLineRunner {
         vet1.setUsername("vet1");
         vet1.setPasswordHash(passwordEncoder.encode("password"));
         vet1.setEmail("vet1@pims.com");
-        vet1.setFullName("Dr. John Doe");
-        vet1.setLicenseId("LIC-001");
-        vet1.setAfm("123456789");
+        vet1.setFirstName("John");
+        vet1.setLastName("Doe");
         vet1.setIsActive(true);
         vet1.setRole(vetRole);
         appUserRepository.save(vet1);
@@ -83,9 +82,8 @@ public class DataInitializer implements CommandLineRunner {
         vet2.setUsername("vet2");
         vet2.setPasswordHash(passwordEncoder.encode("password"));
         vet2.setEmail("vet2@pims.com");
-        vet2.setFullName("Dr. Jane Smith");
-        vet2.setLicenseId("LIC-002");
-        vet2.setAfm("987654321");
+        vet2.setFirstName("Jane");
+        vet2.setLastName("Smith");
         vet2.setIsActive(true);
         vet2.setRole(vetRole);
         appUserRepository.save(vet2);
@@ -141,7 +139,7 @@ public class DataInitializer implements CommandLineRunner {
         appt1.setStartTime(LocalDateTime.now().plusDays(1).withHour(10).withMinute(0));
         appt1.setEndTime(LocalDateTime.now().plusDays(1).withHour(10).withMinute(30));
         appt1.setStatus(AppointmentStatus.SCHEDULED);
-        appt1.setType(AppointmentType.CHECKUP);
+        appt1.setType(AppointmentType.EXAM);
         appt1.setReason("Annual Checkup");
         appt1.setClient(client1);
         appt1.setPatient(patient1);

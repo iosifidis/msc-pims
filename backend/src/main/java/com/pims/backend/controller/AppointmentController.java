@@ -1,11 +1,12 @@
 package com.pims.backend.controller;
 
-import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,6 +32,7 @@ import com.pims.backend.repository.ResourceRepository;
 
 @RestController
 @RequestMapping("/api/appointments")
+@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 public class AppointmentController {
 
     private final AppointmentRepository appointmentRepository;
@@ -64,9 +66,12 @@ public class AppointmentController {
     }
 
     @GetMapping("/next")
-    public ResponseEntity<Appointment> getNextAppointment(Principal principal) {
-        AppUser vet = appUserRepository.findByUsername(principal.getName())
-                .orElseThrow(() -> new RuntimeException("Vet not found"));
+    public ResponseEntity<Appointment> getNextAppointment(@AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
+        AppUser vet = appUserRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Vet user not found"));
 
         Appointment nextAppointment = appointmentRepository.findFirstByVetIdAndStartTimeAfterOrderByStartTimeAsc(
                 vet.getId(), LocalDateTime.now());
@@ -103,23 +108,17 @@ public class AppointmentController {
         AppUser vet = appUserRepository.findById(request.getVetId())
                 .orElseThrow(() -> new RuntimeException("Vet not found"));
 
-        // Handle Resource (optional)
         Resource resource = null;
         if (request.getResourceId() != null) {
             resource = resourceRepository.findById(request.getResourceId())
                     .orElseThrow(() -> new RuntimeException("Resource not found"));
         }
 
-        if (appointmentRepository.existsByVetIdAndStartTimeBetween(
-                request.getVetId(), request.getStartTime(), request.getEndTime())) {
-            throw new RuntimeException("Vet is busy");
-        }
-
         Appointment appointment = new Appointment();
         appointment.setClient(client);
         appointment.setPatient(patient);
         appointment.setVet(vet);
-        appointment.setResource(resource); // Set resource (can be null)
+        appointment.setResource(resource);
         appointment.setStartTime(request.getStartTime());
         appointment.setEndTime(request.getEndTime());
         appointment.setNotes(request.getNotes());
@@ -127,74 +126,35 @@ public class AppointmentController {
         appointment.setType(request.getType());
         appointment.setStatus(AppointmentStatus.SCHEDULED);
 
-        // Save the appointment
         Appointment savedAppointment = appointmentRepository.save(appointment);
-        
-        // Perform fresh fetch to ensure all EAGER relationships are fully populated
-        return ResponseEntity.ok(appointmentRepository.findById(savedAppointment.getId()).orElseThrow());
+        return ResponseEntity.ok(savedAppointment);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Appointment> updateAppointment(@PathVariable Long id, @RequestBody AppointmentRequest request) {
         return appointmentRepository.findById(id)
                 .map(appointment -> {
-                    // Update client if provided
                     if (request.getClientId() != null) {
-                        Client client = clientRepository.findById(request.getClientId())
-                                .orElseThrow(() -> new RuntimeException("Client not found"));
-                        appointment.setClient(client);
+                        appointment.setClient(clientRepository.findById(request.getClientId()).orElseThrow());
                     }
-
-                    // Update patient if provided
                     if (request.getPatientId() != null) {
-                        Patient patient = patientRepository.findById(request.getPatientId())
-                                .orElseThrow(() -> new RuntimeException("Patient not found"));
-                        appointment.setPatient(patient);
+                        appointment.setPatient(patientRepository.findById(request.getPatientId()).orElseThrow());
                     }
-
-                    // Update vet if provided
                     if (request.getVetId() != null) {
-                        AppUser vet = appUserRepository.findById(request.getVetId())
-                                .orElseThrow(() -> new RuntimeException("Vet not found"));
-                        appointment.setVet(vet);
+                        appointment.setVet(appUserRepository.findById(request.getVetId()).orElseThrow());
                     }
-
-                    // Update resource if provided
                     if (request.getResourceId() != null) {
-                        Resource resource = resourceRepository.findById(request.getResourceId())
-                                .orElseThrow(() -> new RuntimeException("Resource not found"));
-                        appointment.setResource(resource);
+                        appointment.setResource(resourceRepository.findById(request.getResourceId()).orElseThrow());
                     }
+                    if (request.getStartTime() != null) appointment.setStartTime(request.getStartTime());
+                    if (request.getEndTime() != null) appointment.setEndTime(request.getEndTime());
+                    if (request.getNotes() != null) appointment.setNotes(request.getNotes());
+                    if (request.getReason() != null) appointment.setReason(request.getReason());
+                    if (request.getType() != null) appointment.setType(request.getType());
 
-                    // Update other fields
-                    if (request.getStartTime() != null) {
-                        appointment.setStartTime(request.getStartTime());
-                    }
-                    if (request.getEndTime() != null) {
-                        appointment.setEndTime(request.getEndTime());
-                    }
-                    if (request.getNotes() != null) {
-                        appointment.setNotes(request.getNotes());
-                    }
-                    if (request.getReason() != null) {
-                        appointment.setReason(request.getReason());
-                    }
-                    if (request.getType() != null) {
-                        appointment.setType(request.getType());
-                    }
-
-                    Appointment savedAppointment = appointmentRepository.save(appointment);
-                    return ResponseEntity.ok(appointmentRepository.findById(savedAppointment.getId()).orElseThrow());
+                    return ResponseEntity.ok(appointmentRepository.save(appointment));
                 })
                 .orElse(ResponseEntity.notFound().build());
-    }
-
-    @PutMapping("/{id}/status")
-    public ResponseEntity<Appointment> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> payload) {
-        Appointment appointment = appointmentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Appointment not found"));
-        appointment.setStatus(AppointmentStatus.valueOf(payload.get("status")));
-        return ResponseEntity.ok(appointmentRepository.save(appointment));
     }
 
     @DeleteMapping("/{id}")

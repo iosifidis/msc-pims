@@ -28,7 +28,7 @@ const ClientsPage = () => {
             setClients(response.data || []);
         } catch (error) {
             console.error('Error fetching clients:', error);
-            alert('Failed to load pet owners. Please try again.');
+            // Suppress alert to prevent blocking UI. Allow empty state to render so user can Add Owner.
         } finally {
             setLoading(false);
         }

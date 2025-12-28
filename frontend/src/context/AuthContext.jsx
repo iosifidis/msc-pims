@@ -1,70 +1,71 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-const AuthContext = createContext();
+const AuthContext = createContext(null);
+
+export const useAuth = () => {
+  return useContext(AuthContext);
+};
 
 export const AuthProvider = ({ children }) => {
-  // Initialize State Lazy: Check localStorage immediately
+  const navigate = useNavigate();
+
+  // Lazy Init: Διαβάζουμε από το localStorage κατά την αρχικοποίηση
   const [user, setUser] = useState(() => {
     try {
-      const savedUser = localStorage.getItem("user");
-      return savedUser ? JSON.parse(savedUser) : null;
-    } catch (error) {
-      console.error("Error parsing user from localStorage:", error);
+      const savedUser = localStorage.getItem('user');
+      return savedUser && savedUser !== 'undefined' && savedUser !== 'null' 
+        ? JSON.parse(savedUser) 
+        : null;
+    } catch (e) {
+      console.error("Error parsing user", e);
       return null;
     }
   });
 
   const [token, setToken] = useState(() => {
-    return localStorage.getItem("token") || null;
+    const savedToken = localStorage.getItem('token');
+    return savedToken && savedToken !== 'undefined' && savedToken !== 'null' 
+      ? savedToken 
+      : null;
   });
 
-  // Loading starts as false because we read from localStorage synchronously.
-  // If we were waiting for an async API validation, we might start as true.
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    // Verify the token is present in localStorage
-    const storedToken = localStorage.getItem("token");
-    
-    if (!storedToken) {
-      // If no token is found but we have state (edge case), logout to clear state
-      if (user || token) {
-        logout();
-      }
-    }
-    
-    // Ensure loading is false after check
-    setLoading(false);
-  }, []);
-
   const login = (userData, authToken) => {
+    if (!authToken) {
+      console.error("No token received");
+      return;
+    }
     setUser(userData);
     setToken(authToken);
-    localStorage.setItem("user", JSON.stringify(userData));
-    localStorage.setItem("token", authToken);
+    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('token', authToken);
   };
 
   const logout = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    localStorage.clear(); // Καθαρίζουμε τα πάντα για σιγουριά
+    navigate('/login');
+  };
+
+  const value = {
+    user,
+    token,
+    isAuthenticated: !!token, // Αν υπάρχει token, θεωρούμε ότι είναι authenticated
+    loading,
+    login,
+    logout
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        login,
-        logout,
-        isAuthenticated: !!token,
-        loading,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export default AuthContext;
