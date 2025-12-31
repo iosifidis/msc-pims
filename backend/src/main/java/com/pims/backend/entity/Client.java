@@ -61,6 +61,9 @@ public class Client {
     @JsonManagedReference
     private List<Patient> pets = new ArrayList<>();
 
+    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Appointment> appointments = new ArrayList<>();
+
     @Column(name = "is_stray_caretaker")
     private Boolean isStrayCaretaker = false;
 

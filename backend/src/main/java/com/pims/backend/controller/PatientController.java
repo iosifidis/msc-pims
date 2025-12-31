@@ -96,6 +96,22 @@ public class PatientController {
     }
 
     /**
+     * Transfer patient ownership
+     * PUT /api/patients/{id}/owner/{ownerId}
+     */
+    @PutMapping("/{id}/owner/{ownerId}")
+    public ResponseEntity<Patient> transferPatient(
+            @PathVariable Long id,
+            @PathVariable Long ownerId) {
+        try {
+            Patient transferredPatient = patientService.transferPatient(id, ownerId);
+            return ResponseEntity.ok(transferredPatient);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
      * Inner DTO for status update
      */
     public static class StatusRequest {

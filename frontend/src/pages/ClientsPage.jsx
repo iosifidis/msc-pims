@@ -502,7 +502,8 @@ const PetManagerModal = ({ client, allClients, onClose, token }) => {
         breed: '',
         sex: '',
         microchip: '',
-        birthDate: ''
+        birthDate: '',
+        isDateOfBirthApproximate: false
     });
     const [saving, setSaving] = useState(false);
 
@@ -597,8 +598,11 @@ const PetManagerModal = ({ client, allClients, onClose, token }) => {
     };
 
     const handlePetFormChange = (e) => {
-        const { name, value } = e.target;
-        setPetFormData(prev => ({ ...prev, [name]: value }));
+        const { name, value, type, checked } = e.target;
+        setPetFormData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
     };
 
     const resetForm = () => {
@@ -621,7 +625,8 @@ const PetManagerModal = ({ client, allClients, onClose, token }) => {
             breed: pet.breed || '',
             sex: pet.sex || '',
             microchip: pet.microchip || '',
-            birthDate: pet.birthDate ? pet.birthDate.split('T')[0] : ''
+            birthDate: pet.birthDate ? pet.birthDate.split('T')[0] : '',
+            isDateOfBirthApproximate: pet.isDateOfBirthApproximate || false
         });
     };
 
@@ -742,13 +747,39 @@ const PetManagerModal = ({ client, allClients, onClose, token }) => {
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                                         Birth Date
                                     </label>
-                                    <input
-                                        type="date"
-                                        name="birthDate"
-                                        value={petFormData.birthDate}
-                                        onChange={handlePetFormChange}
-                                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex items-center">
+                                            <input
+                                                id="isApprox"
+                                                type="checkbox"
+                                                name="isDateOfBirthApproximate"
+                                                checked={petFormData.isDateOfBirthApproximate}
+                                                onChange={handlePetFormChange}
+                                                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                            />
+                                            <label htmlFor="isApprox" className="ml-2 text-xs text-gray-600">
+                                                Approximate / Year Only
+                                            </label>
+                                        </div>
+                                        {petFormData.isDateOfBirthApproximate ? (
+                                            <input
+                                                type="text"
+                                                name="birthDate"
+                                                value={petFormData.birthDate}
+                                                onChange={handlePetFormChange}
+                                                placeholder="YYYY-01-01 (Estim.)"
+                                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                        ) : (
+                                            <input
+                                                type="date"
+                                                name="birthDate"
+                                                value={petFormData.birthDate}
+                                                onChange={handlePetFormChange}
+                                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                        )}
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">

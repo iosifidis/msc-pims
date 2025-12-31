@@ -18,23 +18,27 @@ const MedicalRecordModal = ({ appointmentId, patientName, patientId, onClose }) 
         assessment: '',
         plan: '',
         // Financial
-        cost: ''
+        cost: '',
+        // Follow-up
+        followUpDate: '',
+        followUpNote: ''
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [patientHistory, setPatientHistory] = useState([]);
     const [historyLoading, setHistoryLoading] = useState(true);
 
+    // Initial fetch logs and effects...
     useEffect(() => {
         const fetchRecord = async () => {
             if (!appointmentId) return;
-            
+
             try {
                 const config = {
                     headers: { Authorization: `Bearer ${token}` }
                 };
                 const response = await axios.get(`http://localhost:8080/api/medical-records/appointment/${appointmentId}`, config);
-                
+
                 if (response.data) {
                     setFormData({
                         weight: response.data.weight || '',
@@ -63,13 +67,13 @@ const MedicalRecordModal = ({ appointmentId, patientName, patientId, onClose }) 
 
         const fetchPatientHistory = async () => {
             console.log("Fetching history for Patient ID:", patientId);
-            
+
             if (!patientId) {
                 console.log("No patient ID provided, skipping history fetch");
                 setHistoryLoading(false);
                 return;
             }
-            
+
             try {
                 const config = {
                     headers: { Authorization: `Bearer ${token}` }
@@ -100,20 +104,34 @@ const MedicalRecordModal = ({ appointmentId, patientName, patientId, onClose }) 
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSave = async () => {
+    const handleSave = async (isBooking = false) => {
         setSaving(true);
         try {
             const config = {
                 headers: { Authorization: `Bearer ${token}` }
             };
+
+            // Append follow-up info to Plan if provided
+            let finalPlan = formData.plan;
+            if (formData.followUpDate) {
+                finalPlan += `\n\n[Follow-up Recommended: ${formData.followUpDate}] ${formData.followUpNote}`;
+            }
+
             const payload = {
                 appointmentId,
-                ...formData
+                ...formData,
+                plan: finalPlan // Override plan with appended info
             };
-            
+
             console.log("Saving medical record with vitals:", payload);
             await axios.post('http://localhost:8080/api/medical-records', payload, config);
-            alert('Medical record saved successfully!');
+
+            if (isBooking) {
+                alert(`Medical record saved! Please proceed to book a follow-up for ${formData.followUpDate}.`);
+                // Ideally, this would open the booking modal with pre-filled info
+            } else {
+                alert('Medical record saved successfully!');
+            }
             onClose();
         } catch (error) {
             console.error("Error saving medical record:", error);
@@ -425,7 +443,7 @@ const MedicalRecordModal = ({ appointmentId, patientName, patientId, onClose }) 
 
                         {/* SOAP Notes Section */}
                         <div style={sectionTitleStyle}>Clinical Notes</div>
-                        
+
                         <div style={fieldContainerStyle}>
                             <label style={labelStyle}>
                                 Subjective (History/Symptoms)
@@ -501,6 +519,34 @@ const MedicalRecordModal = ({ appointmentId, patientName, patientId, onClose }) 
                                 min="0"
                             />
                         </div>
+
+                        {/* Follow-up Section */}
+                        <div style={sectionTitleStyle}>Follow-up Plan</div>
+                        <div style={{ ...vitalsContainerStyle, backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }}>
+                            <div style={{ display: 'flex', gap: '16px' }}>
+                                <div style={{ flex: 1 }}>
+                                    <label style={labelStyle}>Recommended Date</label>
+                                    <input
+                                        type="date"
+                                        name="followUpDate"
+                                        value={formData.followUpDate}
+                                        onChange={handleChange}
+                                        style={vitalsInputStyle}
+                                    />
+                                </div>
+                                <div style={{ flex: 2 }}>
+                                    <label style={labelStyle}>Reason / Note</label>
+                                    <input
+                                        type="text"
+                                        name="followUpNote"
+                                        value={formData.followUpNote}
+                                        onChange={handleChange}
+                                        style={vitalsInputStyle}
+                                        placeholder="Checkup, Vaccine booster, etc."
+                                    />
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )}
 
@@ -519,15 +565,15 @@ const MedicalRecordModal = ({ appointmentId, patientName, patientId, onClose }) 
                             {patientHistory.map((record, index) => (
                                 <div key={record.id || index} style={historyCardStyle}>
                                     <div style={historyDateStyle}>
-                                        {record.appointment?.appointmentDate 
-                                            ? new Date(record.appointment.appointmentDate).toLocaleDateString('en-US', { 
-                                                year: 'numeric', 
-                                                month: 'short', 
-                                                day: 'numeric' 
+                                        {record.appointment?.appointmentDate
+                                            ? new Date(record.appointment.appointmentDate).toLocaleDateString('en-US', {
+                                                year: 'numeric',
+                                                month: 'short',
+                                                day: 'numeric'
                                             })
                                             : 'Date not available'}
                                     </div>
-                                    
+
                                     {/* Display Vitals if Available */}
                                     {(record.weight || record.temperature || record.heartRate) && (
                                         <div style={historyVitalsStyle}>
@@ -538,7 +584,7 @@ const MedicalRecordModal = ({ appointmentId, patientName, patientId, onClose }) 
                                             {record.respiratoryRate && `| RR: ${record.respiratoryRate}bpm`}
                                         </div>
                                     )}
-                                    
+
                                     {record.assessment && (
                                         <div style={historyFieldStyle}>
                                             <span style={historyLabelStyle}>Assessment:</span> {record.assessment}
@@ -563,8 +609,17 @@ const MedicalRecordModal = ({ appointmentId, patientName, patientId, onClose }) 
                     >
                         Cancel
                     </button>
+                    {formData.followUpDate && (
+                        <button
+                            onClick={() => handleSave(true)}
+                            style={{ ...saveButtonStyle, backgroundColor: '#059669', marginRight: '8px' }}
+                            disabled={saving || loading}
+                        >
+                            {saving ? 'Saving...' : 'Save & Book Follow-up'}
+                        </button>
+                    )}
                     <button
-                        onClick={handleSave}
+                        onClick={() => handleSave(false)}
                         style={saveButtonStyle}
                         disabled={saving || loading}
                     >

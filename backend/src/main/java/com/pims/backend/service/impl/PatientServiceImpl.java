@@ -119,4 +119,16 @@ public class PatientServiceImpl implements PatientService {
     public void deletePatient(Long id) {
         patientRepository.deleteById(id);
     }
+
+    @Override
+    public Patient transferPatient(Long patientId, Long newOwnerId) {
+        Patient patient = patientRepository.findById(patientId)
+                .orElseThrow(() -> new RuntimeException("Patient not found"));
+
+        Client newOwner = clientRepository.findById(newOwnerId)
+                .orElseThrow(() -> new RuntimeException("New owner not found"));
+
+        patient.setOwner(newOwner);
+        return patientRepository.save(patient);
+    }
 }
