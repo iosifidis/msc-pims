@@ -14,5 +14,7 @@ public interface UserService {
 
     AppUser createUser(RegisterRequest request);
 
+    AppUser updateUser(Long id, RegisterRequest request);
+
     void deleteUser(Long id);
 }

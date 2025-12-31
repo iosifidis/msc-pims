@@ -45,6 +45,15 @@ public class UserController {
         }
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<AppUser> updateUser(@PathVariable Long id, @RequestBody RegisterRequest request) {
+        try {
+            return ResponseEntity.ok(userService.updateUser(id, request));
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         try {

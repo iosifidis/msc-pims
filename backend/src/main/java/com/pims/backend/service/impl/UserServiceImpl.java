@@ -75,6 +75,25 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public AppUser updateUser(Long id, RegisterRequest request) {
+        AppUser user = appUserRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (request.getFirstName() != null)
+            user.setFirstName(request.getFirstName());
+        if (request.getLastName() != null)
+            user.setLastName(request.getLastName());
+        if (request.getEmail() != null)
+            user.setEmail(request.getEmail());
+
+        if (request.getPassword() != null && !request.getPassword().isEmpty()) {
+            user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        }
+
+        return appUserRepository.save(user);
+    }
+
+    @Override
     public void deleteUser(Long id) {
         AppUser userToDelete = appUserRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));

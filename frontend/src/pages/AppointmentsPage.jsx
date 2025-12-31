@@ -200,9 +200,9 @@ const PatientHistoryModal = ({ patient, onClose, onViewRecord, onEditRecord, tok
             api.get(`${API_BASE_URL}/medical-records/patient/${patient.id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             })
-            .then(res => setRecords(res.data))
-            .catch(err => console.error("Error fetching history:", err))
-            .finally(() => setLoading(false));
+                .then(res => setRecords(res.data))
+                .catch(err => console.error("Error fetching history:", err))
+                .finally(() => setLoading(false));
         }
     }, [patient, token]);
 
@@ -254,7 +254,7 @@ const PatientHistoryModal = ({ patient, onClose, onViewRecord, onEditRecord, tok
                                         </td>
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex justify-end gap-2">
-                                                <button 
+                                                <button
                                                     onClick={() => onViewRecord(record)}
                                                     className="text-blue-600 hover:text-blue-800 p-1"
                                                     title="View Details"
@@ -264,7 +264,7 @@ const PatientHistoryModal = ({ patient, onClose, onViewRecord, onEditRecord, tok
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                     </svg>
                                                 </button>
-                                                <button 
+                                                <button
                                                     onClick={() => onEditRecord(record)}
                                                     className="text-green-600 hover:text-green-800 p-1"
                                                     title="Edit Record"
@@ -283,8 +283,8 @@ const PatientHistoryModal = ({ patient, onClose, onViewRecord, onEditRecord, tok
                 </div>
 
                 <div className="flex justify-end mt-8 pt-6 border-t border-gray-100">
-                    <button 
-                        onClick={onClose} 
+                    <button
+                        onClick={onClose}
                         className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md font-bold transition-colors"
                     >
                         Back to Appointment
@@ -340,82 +340,82 @@ const ExaminationModal = ({ appointment, initialData, readOnly, isEditingHistory
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
-                            <input 
-                                type="number" 
-                                name="weight" 
-                                value={examData.weight} 
-                                onChange={handleChange} 
+                            <input
+                                type="number"
+                                name="weight"
+                                value={examData.weight}
+                                onChange={handleChange}
                                 disabled={readOnly}
-                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" 
-                                step="0.1" 
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                step="0.1"
                             />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Temperature (°C)</label>
-                            <input 
-                                type="number" 
-                                name="temperature" 
-                                value={examData.temperature} 
-                                onChange={handleChange} 
+                            <input
+                                type="number"
+                                name="temperature"
+                                value={examData.temperature}
+                                onChange={handleChange}
                                 disabled={readOnly}
-                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" 
-                                step="0.1" 
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                step="0.1"
                             />
                         </div>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Symptoms (Subjective)</label>
-                        <textarea 
-                            name="symptoms" 
-                            value={examData.symptoms} 
-                            onChange={handleChange} 
+                        <textarea
+                            name="symptoms"
+                            value={examData.symptoms}
+                            onChange={handleChange}
                             disabled={readOnly}
-                            rows="3" 
-                            className="w-full border border-gray-300 rounded-md px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" 
+                            rows="3"
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                         />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Diagnosis (Assessment)</label>
-                        <textarea 
-                            name="diagnosis" 
-                            value={examData.diagnosis} 
-                            onChange={handleChange} 
+                        <textarea
+                            name="diagnosis"
+                            value={examData.diagnosis}
+                            onChange={handleChange}
                             disabled={readOnly}
-                            rows="3" 
-                            className="w-full border border-gray-300 rounded-md px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" 
+                            rows="3"
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                         />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Treatment (Plan)</label>
-                        <textarea 
-                            name="treatment" 
-                            value={examData.treatment} 
-                            onChange={handleChange} 
+                        <textarea
+                            name="treatment"
+                            value={examData.treatment}
+                            onChange={handleChange}
                             disabled={readOnly}
-                            rows="3" 
-                            className="w-full border border-gray-300 rounded-md px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed" 
+                            rows="3"
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                         />
                     </div>
                 </div>
 
                 <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-100">
                     {readOnly ? (
-                        <button 
-                            onClick={onClose} 
+                        <button
+                            onClick={onClose}
                             className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md font-bold transition-colors"
                         >
                             Close
                         </button>
                     ) : (
                         <>
-                            <button 
-                                onClick={onClose} 
+                            <button
+                                onClick={onClose}
                                 className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md font-bold transition-colors"
                             >
                                 Cancel
                             </button>
-                            <button 
-                                onClick={() => onComplete(examData)} 
+                            <button
+                                onClick={() => onComplete(examData)}
                                 className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md font-bold transition-colors"
                             >
                                 {isEditingHistory ? 'Update Record' : 'Complete Examination'}
@@ -523,11 +523,11 @@ const AppointmentsPage = () => {
             const response = await api.get(`${API_BASE_URL}/appointments`, config);
             const formattedEvents = response.data.map(appt => {
                 const typeConfig = APPOINTMENT_TYPES.find(t => t.value === appt.type) || APPOINTMENT_TYPES[0];
-                
+
                 // Determine color based on status first, then type
                 let backgroundColor = typeConfig.color;
                 let borderColor = typeConfig.color;
-                
+
                 const start = new Date(appt.startTime);
                 const end = appt.endTime ? new Date(appt.endTime) : new Date(start.getTime() + 30 * 60000);
                 const isExpired = end < new Date() && appt.status === 'SCHEDULED';
@@ -659,10 +659,10 @@ const AppointmentsPage = () => {
                 startTime: startTime,
                 endTime: endTime
             });
-            
+
             const client = props.client || null;
             setSelectedClient(client);
-            
+
             // Trigger fetch immediately
             if (client?.id) {
                 fetchPatientsForClient(client.id);
@@ -674,7 +674,7 @@ const AppointmentsPage = () => {
 
     const handleClientSelect = (client) => {
         setSelectedClient(client);
-        
+
         if (client) {
             setFormData(prev => ({
                 ...prev,
@@ -705,8 +705,8 @@ const AppointmentsPage = () => {
             type: 'EXAM',
             status: 'SCHEDULED',
             notes: '',
-            startTime: selectInfo.startStr,
-            endTime: selectInfo.endStr
+            startTime: toLocalISOString(selectInfo.start).slice(0, 16),
+            endTime: toLocalISOString(selectInfo.end).slice(0, 16)
         });
         setSelectedClient(null);
         setPatients([]);
@@ -724,7 +724,7 @@ const AppointmentsPage = () => {
         const now = new Date();
         const startStr = toLocalISOString(now);
         const endStr = toLocalISOString(new Date(now.getTime() + 30 * 60000));
-        
+
         setShowModal(true);
         setIsEditMode(false);
         setSelectedAppointment(null);
@@ -748,7 +748,7 @@ const AppointmentsPage = () => {
     // Converts nested objects (client, patient, vet) back to flat IDs
     const formatPayload = (data, overrides = {}) => {
         const props = data.extendedProps || data;
-        
+
         // Extract IDs
         const clientId = props.client?.id || props.clientId;
         const patientId = props.patient?.id || props.patientId;
@@ -797,7 +797,7 @@ const AppointmentsPage = () => {
             }
             newEnd = new Date(newStart.getTime() + duration);
         }
-        
+
         // Drag & Drop Logic: Reactivate if moving to future
         const isFuture = newStart > new Date();
         let statusOverride = undefined;
@@ -860,9 +860,9 @@ const AppointmentsPage = () => {
         setShowModal(true);
         setIsEditMode(true);
         setSelectedAppointment(appointment);
-        setSelectedSlot({ 
-            start: new Date(appointment.startTime), 
-            end: appointment.endTime ? new Date(appointment.endTime) : null 
+        setSelectedSlot({
+            start: new Date(appointment.startTime),
+            end: appointment.endTime ? new Date(appointment.endTime) : null
         });
     };
 
@@ -901,7 +901,7 @@ const AppointmentsPage = () => {
 
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            
+
             if (selectedAppointment?.id) {
                 // Update existing
                 await api.put(`${API_BASE_URL}/appointments/${selectedAppointment.id}`, payload, config);
@@ -909,7 +909,7 @@ const AppointmentsPage = () => {
                 // Create new
                 await api.post(`${API_BASE_URL}/appointments`, payload, config);
             }
-            
+
             setShowModal(false);
             resetForm();
             fetchAppointments();
@@ -921,7 +921,7 @@ const AppointmentsPage = () => {
 
     const handleDelete = async () => {
         if (!selectedAppointment?.id) return;
-        
+
         if (!window.confirm('Are you sure you want to delete this appointment?')) {
             return;
         }
@@ -940,14 +940,14 @@ const AppointmentsPage = () => {
 
     const handleStartExam = async () => {
         if (!selectedAppointment?.id) return;
-        
+
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            
+
             // Step 1: Call generic API to update status to IN_PROGRESS
             const payload = formatPayload(selectedAppointment, { status: 'IN_PROGRESS' });
             await api.put(`${API_BASE_URL}/appointments/${selectedAppointment.id}`, payload, config);
-            
+
             // Step 2 & 3: Close AppointmentModal and Open ExamModal
             setExamInitialData(null);
             setIsExamReadOnly(false);
@@ -955,7 +955,7 @@ const AppointmentsPage = () => {
             setShowModal(false);
             setExamAppointment(selectedAppointment);
             setShowExamModal(true);
-            
+
             // Refresh calendar
             fetchAppointments();
         } catch (error) {
@@ -969,7 +969,7 @@ const AppointmentsPage = () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const response = await api.get(`${API_BASE_URL}/medical-records/appointment/${selectedAppointment.id}`, config);
-            
+
             setExamInitialData(response.data);
             setExamAppointment(selectedAppointment);
             setIsExamReadOnly(true);
@@ -1003,7 +1003,7 @@ const AppointmentsPage = () => {
 
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            
+
             const payload = {
                 appointmentId: examAppointment.id,
                 weight: parseFloat(examData.weight),
@@ -1032,7 +1032,7 @@ const AppointmentsPage = () => {
         const props = selectedAppointment?.extendedProps || selectedAppointment || {};
         const patient = props.patient;
         const client = props.client;
-        
+
         if (!patient?.id) {
             alert("Please select a patient first.");
             return;
@@ -1087,7 +1087,7 @@ const AppointmentsPage = () => {
             };
 
             await api.put(`${API_BASE_URL}/medical-records/${examInitialData.id}`, payload, config);
-            
+
             setShowExamModal(false);
             setShowHistoryModal(true); // Return to history list
         } catch (error) {
@@ -1102,7 +1102,7 @@ const AppointmentsPage = () => {
         setExamInitialData(null);
         setIsEditingHistory(false);
         setIsExamReadOnly(false);
-        
+
         // If we were in history flow (patient is set), return to history list
         if (historyPatient) {
             setShowHistoryModal(true);
@@ -1130,7 +1130,7 @@ const AppointmentsPage = () => {
                     <h1 className="text-3xl font-bold text-gray-900">Appointments</h1>
                     <p className="text-gray-500 mt-1">Manage your schedule efficiently</p>
                 </div>
-                
+
                 <div className="flex items-center gap-4 w-full md:w-auto">
                     {/* Search Input */}
                     <div className="relative w-full md:w-64">
@@ -1277,8 +1277,8 @@ const AppointmentsPage = () => {
                         weekends={true}
                         select={handleDateSelect}
                         eventClick={handleEventClick}
-                        slotMinTime="07:00:00"
-                        slotMaxTime="20:00:00"
+                        slotMinTime="00:00:00"
+                        slotMaxTime="24:00:00"
                         allDaySlot={false}
                         slotDuration="00:30:00"
                         height="auto"
@@ -1497,9 +1497,8 @@ const AppointmentsPage = () => {
                                         readOnly={isLocked}
                                         rows={3}
                                         placeholder={isLocked ? '' : 'Add any notes about this appointment...'}
-                                        className={`w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
-                                            isLocked ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : ''
-                                        }`}
+                                        className={`w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${isLocked ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : ''
+                                            }`}
                                     />
                                 </div>
                             </div>
@@ -1513,28 +1512,21 @@ const AppointmentsPage = () => {
                                     <>
                                         {!isExpired && (
                                             <button
-                                            onClick={handleDelete}
-                                            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-bold transition-colors"
-                                            disabled={isLocked}
-                                        >
-                                            Delete
+                                                onClick={handleDelete}
+                                                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-bold transition-colors"
+                                                disabled={isLocked}
+                                            >
+                                                Delete
                                             </button>
                                         )}
-                                        {!isExpired && (isLocked ? (
-                                            <button
-                                                onClick={handleViewRecord}
-                                                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md font-bold transition-colors"
-                                            >
-                                                Medical Record
-                                            </button>
-                                        ) : (
+                                        {!isLocked && (
                                             <button
                                                 onClick={handleStartExam}
                                                 className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md font-bold transition-colors"
                                             >
                                                 Examine
                                             </button>
-                                        ))}
+                                        )}
                                         <button
                                             onClick={handleHistory}
                                             className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md font-bold transition-colors"
@@ -1581,7 +1573,7 @@ const AppointmentsPage = () => {
 
             {/* ===== EXAMINATION MODAL ===== */}
             {showExamModal && (
-                <ExaminationModal 
+                <ExaminationModal
                     appointment={examAppointment}
                     initialData={examInitialData}
                     readOnly={isExamReadOnly}

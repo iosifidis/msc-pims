@@ -198,6 +198,9 @@ const DashboardPage = () => {
     const [selectedClient, setSelectedClient] = useState(null);
     const [selectedVet, setSelectedVet] = useState('');
 
+    // Clock State
+    const [currentTime, setCurrentTime] = useState(new Date());
+
     // Exam Modal State
     const [showExamModal, setShowExamModal] = useState(false);
     const [examAppointment, setExamAppointment] = useState(null);
@@ -208,6 +211,10 @@ const DashboardPage = () => {
     const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [historyPatient, setHistoryPatient] = useState(null);
     const [isEditingHistory, setIsEditingHistory] = useState(false);
+
+    // Dashboard Card Modals state
+    const [showTodayModal, setShowTodayModal] = useState(false);
+    const [showWeekModal, setShowWeekModal] = useState(false);
 
     // Form Data
     const [formData, setFormData] = useState({
@@ -316,15 +323,39 @@ const DashboardPage = () => {
     }, [user, rawAppointments]);
 
     // Calculate Stats from Filtered List
+    const todaysAppointmentsList = useMemo(() => {
+        return myAppointments.filter(appt => isToday(new Date(appt.startTime)))
+            .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+    }, [myAppointments]);
+
+    const weeksAppointmentsList = useMemo(() => {
+        return myAppointments.filter(appt => isThisWeek(new Date(appt.startTime), { weekStartsOn: 1 }))
+            .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+    }, [myAppointments]);
+
     const stats = useMemo(() => {
-        const todayCount = myAppointments.filter(appt => isToday(new Date(appt.startTime))).length;
-        const weekCount = myAppointments.filter(appt => isThisWeek(new Date(appt.startTime), { weekStartsOn: 1 })).length;
+        const todayCount = todaysAppointmentsList.length;
+        const weekCount = weeksAppointmentsList.length;
 
         return {
             todayAppointments: todayCount,
             weekAppointments: weekCount,
         };
-    }, [myAppointments, dashboardStats]);
+    }, [myAppointments, todaysAppointmentsList, dashboardStats]);
+
+    // Clock Effect
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    // Get Next Appointment
+    const nextAppointment = useMemo(() => {
+        const now = new Date();
+        return myAppointments
+            .filter(appt => new Date(appt.startTime) > now && appt.status !== 'CANCELLED')
+            .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))[0];
+    }, [myAppointments, currentTime]); // Re-evaluate as time passes (optional, but good for immediate updates)
 
     // Format Events for Calendar
     const events = useMemo(() => {
@@ -369,13 +400,13 @@ const DashboardPage = () => {
 
     // Auto-select current vet in form when user is available
     useEffect(() => {
-        if (!selectedVet && user && vets.length > 0) {
+        if (user && vets.length > 0 && !formData.vetId) {
             const currentVet = vets.find(v => v.username === user.username);
             if (currentVet) {
-                setSelectedVet(currentVet.id);
+                setFormData(prev => ({ ...prev, vetId: currentVet.id }));
             }
         }
-    }, [user, vets, selectedVet]);
+    }, [user, vets, formData.vetId]);
 
     // Safe Data Parsing for Modal
     useEffect(() => {
@@ -387,15 +418,20 @@ const DashboardPage = () => {
             let endTime = '';
 
             if (initialData.start) {
-                startTime = toLocalISOString(initialData.start);
-                endTime = initialData.end ? toLocalISOString(initialData.end) : '';
+                // FullCalendar Event Object
+                startTime = toLocalISOString(initialData.start).slice(0, 16);
+                endTime = initialData.end ? toLocalISOString(initialData.end).slice(0, 16) : '';
+            } else if (initialData.startTime) {
+                // Raw Appointment Object
+                startTime = toLocalISOString(new Date(initialData.startTime)).slice(0, 16);
+                endTime = initialData.endTime ? toLocalISOString(new Date(initialData.endTime)).slice(0, 16) : '';
             }
 
             setFormData({
                 clientId: props.client?.id || '',
                 clientName: props.client ? `${props.client.firstName} ${props.client.lastName}` : '',
                 patientId: props.patient?.id || '',
-                vetId: props.vet?.id || '',
+                vetId: props.vet?.id || (user && vets.find(v => v.username === user.username)?.id) || '',
                 type: props.type || 'EXAM',
                 status: props.status || 'SCHEDULED',
                 notes: props.notes || '',
@@ -412,7 +448,7 @@ const DashboardPage = () => {
                 setPatients([]);
             }
         }
-    }, [selectedAppointment, showModal, fetchPatientsForClient]);
+    }, [selectedAppointment, showModal, fetchPatientsForClient, user, vets]);
 
     // ============================================
     // HANDLERS
@@ -444,7 +480,7 @@ const DashboardPage = () => {
             clientId: '',
             clientName: '',
             patientId: '',
-            vetId: '',
+            vetId: (user && vets.find(v => v.username === user.username)?.id) || '',
             type: 'EXAM',
             status: 'SCHEDULED',
             notes: '',
@@ -466,12 +502,12 @@ const DashboardPage = () => {
             clientId: '',
             clientName: '',
             patientId: '',
-            vetId: '',
+            vetId: (user && vets.find(v => v.username === user.username)?.id) || '',
             type: 'EXAM',
             status: 'SCHEDULED',
             notes: '',
-            startTime: selectInfo.startStr,
-            endTime: selectInfo.endStr
+            startTime: toLocalISOString(selectInfo.start).slice(0, 16),
+            endTime: toLocalISOString(selectInfo.end).slice(0, 16)
         });
         setSelectedClient(null);
         setPatients([]);
@@ -764,31 +800,71 @@ const DashboardPage = () => {
         <div className="space-y-6">
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
-                    <div className="flex items-center justify-between">
+                <div
+                    onClick={() => setShowTodayModal(true)}
+                    className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500 cursor-pointer hover:bg-blue-50 transition-colors group h-full flex flex-col justify-center"
+                >
+                    <div className="flex items-center justify-between w-full">
                         <div>
-                            <p className="text-sm font-medium text-gray-600">Today's Appointments</p>
+                            <p className="text-sm font-medium text-gray-600 group-hover:text-blue-700">Today's Appointments</p>
                             <p className="text-3xl font-bold text-gray-900 mt-2">{stats.todayAppointments}</p>
                         </div>
-                        <div className="text-4xl">📅</div>
+                        <div className="text-4xl group-hover:scale-110 transition-transform">📅</div>
                     </div>
                 </div>
-                <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
-                    <div className="flex items-center justify-between">
+                <div
+                    onClick={() => setShowWeekModal(true)}
+                    className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500 cursor-pointer hover:bg-green-50 transition-colors group h-full flex flex-col justify-center"
+                >
+                    <div className="flex items-center justify-between w-full">
                         <div>
-                            <p className="text-sm font-medium text-gray-600">Week's Appointments</p>
+                            <p className="text-sm font-medium text-gray-600 group-hover:text-green-700">Week's Appointments</p>
                             <p className="text-3xl font-bold text-gray-900 mt-2">{stats.weekAppointments}</p>
                         </div>
-                        <div className="text-4xl">📊</div>
+                        <div className="text-4xl group-hover:scale-110 transition-transform">📊</div>
                     </div>
                 </div>
-                <div className="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-gray-600">Total Patients</p>
-                            <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalPatients}</p>
+                <div
+                    onClick={() => {
+                        if (nextAppointment) {
+                            setSelectedAppointment(nextAppointment);
+                            setIsEditMode(true);
+                            setShowModal(true);
+                        }
+                    }}
+                    className={`bg-white rounded-lg shadow p-6 border-l-4 border-purple-500 transition-colors group h-full ${nextAppointment ? 'cursor-pointer hover:bg-purple-50' : ''}`}
+                >
+                    <div className="flex flex-col h-full justify-between">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">
+                                    {currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                                </p>
+                                <p className="text-2xl font-bold text-gray-900 leading-none mt-1">
+                                    {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                            </div>
+                            <div className="text-3xl animate-pulse">🕒</div>
                         </div>
-                        <div className="text-4xl">🐾</div>
+
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                            <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Next Appointment</p>
+                            {nextAppointment ? (
+                                <div>
+                                    <p className="text-lg font-bold text-purple-700 group-hover:text-purple-900 truncate">
+                                        {nextAppointment.patient?.name}
+                                    </p>
+                                    <p className="text-sm text-gray-600 truncate">
+                                        Owner: {nextAppointment.client?.firstName} {nextAppointment.client?.lastName}
+                                    </p>
+                                    <p className="text-xs text-blue-600 mt-1 font-medium bg-blue-50 inline-block px-1.5 py-0.5 rounded">
+                                        {new Date(nextAppointment.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                    </p>
+                                </div>
+                            ) : (
+                                <p className="text-gray-400 italic text-sm">No upcoming appointments</p>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -796,7 +872,7 @@ const DashboardPage = () => {
             {/* Calendar Section */}
             <div className="bg-white rounded-lg shadow p-6">
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">My Schedule</h2>
-                <div style={{ height: '600px' }}>
+                <div>
                     <FullCalendar
                         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
                         initialView="timeGridWeek"
@@ -812,11 +888,11 @@ const DashboardPage = () => {
                         weekends={true}
                         select={handleDateSelect}
                         eventClick={handleEventClick}
-                        slotMinTime="07:00:00"
-                        slotMaxTime="20:00:00"
+                        slotMinTime="00:00:00"
+                        slotMaxTime="24:00:00"
                         allDaySlot={false}
                         slotDuration="00:30:00"
-                        height="100%"
+                        height="auto"
                         eventDisplay="block"
                         nowIndicator={true}
                         editable={true}
@@ -825,7 +901,126 @@ const DashboardPage = () => {
                 </div>
             </div>
 
-            {/* Appointment Modal */}
+            {/* ===== TODAY'S APPOINTMENTS MODAL ===== */}
+            {showTodayModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                            <h2 className="text-xl font-bold text-gray-900">Today's Appointments</h2>
+                            <button onClick={() => setShowTodayModal(false)} className="text-gray-400 hover:text-gray-600 font-bold text-xl">×</button>
+                        </div>
+                        <div className="p-6 overflow-y-auto">
+                            {todaysAppointmentsList.length === 0 ? (
+                                <p className="text-center text-gray-500 py-8">No appointments scheduled for today.</p>
+                            ) : (
+                                <div className="space-y-4">
+                                    {todaysAppointmentsList.map(appt => (
+                                        <div key={appt.id} className="border border-gray-200 rounded-lg p-4 flex justify-between items-center hover:bg-gray-50 transition-colors">
+                                            <div>
+                                                <div className="flex items-center gap-3 mb-1">
+                                                    <span className="font-bold text-lg text-gray-900">
+                                                        {new Date(appt.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                                    </span>
+                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium uppercase border ${APPOINTMENT_TYPES.find(t => t.value === appt.type)
+                                                        ? `bg-[${APPOINTMENT_TYPES.find(t => t.value === appt.type)?.color}] text-gray-800 bg-opacity-20 border-opacity-30`
+                                                        : 'bg-gray-100 text-gray-800'
+                                                        }`} style={{
+                                                            borderColor: APPOINTMENT_TYPES.find(t => t.value === appt.type)?.color,
+                                                            color: APPOINTMENT_TYPES.find(t => t.value === appt.type)?.color
+                                                        }}>
+                                                        {APPOINTMENT_TYPES.find(t => t.value === appt.type)?.label || appt.type}
+                                                    </span>
+                                                </div>
+                                                <div className="text-gray-900 font-medium">
+                                                    {appt.patient?.name} <span className="text-gray-500 font-normal">({appt.patient?.species})</span>
+                                                </div>
+                                                <div className="text-sm text-gray-500">
+                                                    Owner: {appt.client?.firstName} {appt.client?.lastName}
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${appt.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                                                    appt.status === 'IN_PROGRESS' ? 'bg-orange-100 text-orange-800' :
+                                                        appt.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                                                            'bg-blue-100 text-blue-800'
+                                                    }`}>
+                                                    {appt.status}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end">
+                            <button onClick={() => setShowTodayModal(false)} className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md font-medium">Close</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ===== WEEK'S APPOINTMENTS MODAL ===== */}
+            {showWeekModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                            <h2 className="text-xl font-bold text-gray-900">This Week's Appointments</h2>
+                            <button onClick={() => setShowWeekModal(false)} className="text-gray-400 hover:text-gray-600 font-bold text-xl">×</button>
+                        </div>
+                        <div className="p-6 overflow-y-auto">
+                            {weeksAppointmentsList.length === 0 ? (
+                                <p className="text-center text-gray-500 py-8">No appointments scheduled for this week.</p>
+                            ) : (
+                                <div className="space-y-4">
+                                    {weeksAppointmentsList.map(appt => (
+                                        <div key={appt.id} className="border border-gray-200 rounded-lg p-4 flex justify-between items-center hover:bg-gray-50 transition-colors">
+                                            <div>
+                                                <div className="flex items-center gap-3 mb-1">
+                                                    <span className="text-sm font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
+                                                        {new Date(appt.startTime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                                    </span>
+                                                    <span className="font-bold text-lg text-gray-900">
+                                                        {new Date(appt.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                                    </span>
+                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium uppercase border ${APPOINTMENT_TYPES.find(t => t.value === appt.type)
+                                                        ? `bg-[${APPOINTMENT_TYPES.find(t => t.value === appt.type)?.color}] text-gray-800 bg-opacity-20 border-opacity-30`
+                                                        : 'bg-gray-100 text-gray-800'
+                                                        }`} style={{
+                                                            borderColor: APPOINTMENT_TYPES.find(t => t.value === appt.type)?.color,
+                                                            color: APPOINTMENT_TYPES.find(t => t.value === appt.type)?.color
+                                                        }}>
+                                                        {APPOINTMENT_TYPES.find(t => t.value === appt.type)?.label || appt.type}
+                                                    </span>
+                                                </div>
+                                                <div className="text-gray-900 font-medium">
+                                                    {appt.patient?.name} <span className="text-gray-500 font-normal">({appt.patient?.species})</span>
+                                                </div>
+                                                <div className="text-sm text-gray-500">
+                                                    Owner: {appt.client?.firstName} {appt.client?.lastName}
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${appt.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                                                    appt.status === 'IN_PROGRESS' ? 'bg-orange-100 text-orange-800' :
+                                                        appt.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                                                            'bg-blue-100 text-blue-800'
+                                                    }`}>
+                                                    {appt.status}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end">
+                            <button onClick={() => setShowWeekModal(false)} className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md font-medium">Close</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ===== APPOINTMENT MODAL ===== */}
             {showModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-8">

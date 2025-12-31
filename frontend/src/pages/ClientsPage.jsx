@@ -642,18 +642,24 @@ const PetManagerModal = ({ client, allClients, onClose, token }) => {
 
         setSaving(true);
         try {
+            // Ensure microchip is null if empty string to avoid unique constraint violations
+            const payload = {
+                ...petFormData,
+                microchip: petFormData.microchip && petFormData.microchip.trim() !== '' ? petFormData.microchip : null
+            };
+
             if (editingPetId) {
                 // UPDATE existing pet
                 await api.put(
                     `http://localhost:8080/api/patients/${editingPetId}`,
-                    petFormData,
+                    payload,
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
             } else {
                 // CREATE new pet
                 await api.post(
-                    `http://localhost:8080/api/clients/${client.id}/pets`,
-                    petFormData,
+                    `http://localhost:8080/api/clients/${client.id}/patients`,
+                    payload,
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
             }
@@ -1029,7 +1035,7 @@ const ClientHistoryModal = ({ client, onClose, token }) => {
         setLoading(true);
         try {
             const response = await api.get(
-                `http://localhost:8080/api/medical-records/owner/${client.id}`,
+                `http://localhost:8080/api/medical-records/client/${client.id}`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             setRecords(response.data || []);
