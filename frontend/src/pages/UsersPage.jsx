@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../context/axiosConfig';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -24,7 +24,7 @@ const UsersPage = () => {
 
     const fetchUsers = async () => {
         try {
-            const response = await axios.get('http://localhost:8080/api/users', {
+            const response = await api.get('http://localhost:8080/api/users', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setUsers(response.data || []);
@@ -47,7 +47,7 @@ const UsersPage = () => {
         }
 
         try {
-            await axios.delete(`http://localhost:8080/api/users/${userId}`, {
+            await api.delete(`http://localhost:8080/api/users/${userId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setUsers(users.filter(u => u.id !== userId));

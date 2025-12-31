@@ -4,7 +4,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { isToday, isThisWeek } from 'date-fns';
-import axios from 'axios';
+import api from '../context/axiosConfig';
 import { useAuth } from '../context/AuthContext';
 import PatientHistoryModal from '../components/PatientHistoryModal';
 import ClientSearchDropdown from '../components/ClientSearchDropdown';
@@ -239,7 +239,7 @@ const DashboardPage = () => {
             const config = {
                 headers: { Authorization: `Bearer ${token}` }
             };
-            const response = await axios.get(`${API_BASE_URL}/appointments`, config);
+            const response = await api.get(`${API_BASE_URL}/appointments`, config);
             setRawAppointments(response.data || []);
         } catch (error) {
             console.error('Error fetching appointments:', error);
@@ -254,7 +254,7 @@ const DashboardPage = () => {
         }
         setPatientsLoading(true);
         try {
-            const response = await axios.get(`${API_BASE_URL}/patients/owner/${clientId}`, {
+            const response = await api.get(`${API_BASE_URL}/patients/owner/${clientId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setPatients(response.data);
@@ -277,9 +277,9 @@ const DashboardPage = () => {
 
                 // Fetch Stats, Clients, Vets in parallel
                 const [statsRes, clientsRes, vetsRes] = await Promise.all([
-                    axios.get(`${API_BASE_URL}/dashboard/stats`, config),
-                    axios.get(`${API_BASE_URL}/clients`, config),
-                    axios.get(`${API_BASE_URL}/users/vets`, config).catch(() => ({ data: [] }))
+                    api.get(`${API_BASE_URL}/dashboard/stats`, config),
+                    api.get(`${API_BASE_URL}/clients`, config),
+                    api.get(`${API_BASE_URL}/users/vets`, config).catch(() => ({ data: [] }))
                 ]);
 
                 setDashboardStats({
@@ -539,7 +539,7 @@ const DashboardPage = () => {
         });
 
         try {
-            await axios.put(`${API_BASE_URL}/appointments/${event.id}`, payload, {
+            await api.put(`${API_BASE_URL}/appointments/${event.id}`, payload, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchAppointments();
@@ -569,9 +569,9 @@ const DashboardPage = () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             if (selectedAppointment?.id) {
-                await axios.put(`${API_BASE_URL}/appointments/${selectedAppointment.id}`, payload, config);
+                await api.put(`${API_BASE_URL}/appointments/${selectedAppointment.id}`, payload, config);
             } else {
-                await axios.post(`${API_BASE_URL}/appointments`, payload, config);
+                await api.post(`${API_BASE_URL}/appointments`, payload, config);
             }
             setShowModal(false);
             resetForm();
@@ -588,7 +588,7 @@ const DashboardPage = () => {
 
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.delete(`${API_BASE_URL}/appointments/${selectedAppointment.id}`, config);
+            await api.delete(`${API_BASE_URL}/appointments/${selectedAppointment.id}`, config);
             setShowModal(false);
             resetForm();
             fetchAppointments();
@@ -603,7 +603,7 @@ const DashboardPage = () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const payload = formatPayload(selectedAppointment, { status: 'IN_PROGRESS' });
-            await axios.put(`${API_BASE_URL}/appointments/${selectedAppointment.id}`, payload, config);
+            await api.put(`${API_BASE_URL}/appointments/${selectedAppointment.id}`, payload, config);
 
             setExamInitialData(null);
             setIsExamReadOnly(false);
@@ -622,7 +622,7 @@ const DashboardPage = () => {
         if (!selectedAppointment?.id) return;
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const response = await axios.get(`${API_BASE_URL}/medical-records/appointment/${selectedAppointment.id}`, config);
+            const response = await api.get(`${API_BASE_URL}/medical-records/appointment/${selectedAppointment.id}`, config);
 
             setExamInitialData(response.data);
             setExamAppointment(selectedAppointment);
@@ -663,7 +663,7 @@ const DashboardPage = () => {
                 diagnosis: examData.diagnosis,
                 treatment: examData.treatment
             };
-            await axios.post(`${API_BASE_URL}/medical-records`, payload, config);
+            await api.post(`${API_BASE_URL}/medical-records`, payload, config);
             setShowExamModal(false);
             setExamAppointment(null);
             fetchAppointments();
@@ -723,7 +723,7 @@ const DashboardPage = () => {
                 diagnosis: examData.diagnosis,
                 treatment: examData.treatment
             };
-            await axios.put(`${API_BASE_URL}/medical-records/${examInitialData.id}`, payload, config);
+            await api.put(`${API_BASE_URL}/medical-records/${examInitialData.id}`, payload, config);
             setShowExamModal(false);
             setShowHistoryModal(true);
         } catch (error) {

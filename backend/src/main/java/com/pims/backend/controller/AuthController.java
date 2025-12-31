@@ -28,10 +28,10 @@ public class AuthController {
     private final JwtService jwtService;
 
     public AuthController(AuthenticationManager authenticationManager,
-                          AppUserRepository appUserRepository,
-                          RoleRepository roleRepository,
-                          PasswordEncoder passwordEncoder,
-                          JwtService jwtService) {
+            AppUserRepository appUserRepository,
+            RoleRepository roleRepository,
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService) {
         this.authenticationManager = authenticationManager;
         this.appUserRepository = appUserRepository;
         this.roleRepository = roleRepository;
@@ -71,8 +71,7 @@ public class AuthController {
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         try {
             authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
-            );
+                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
         } catch (AuthenticationException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
         }
@@ -81,7 +80,13 @@ public class AuthController {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         String token = jwtService.generateToken(user);
-        return ResponseEntity.ok(new AuthResponse(token));
+        return ResponseEntity.ok(new AuthResponse(
+                token,
+                user.getId(),
+                user.getUsername(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getRole() != null ? user.getRole().getName() : null));
     }
 
     // DTO Classes
@@ -89,21 +94,86 @@ public class AuthController {
         private String username;
         private String password;
 
-        public String getUsername() { return username; }
-        public void setUsername(String username) { this.username = username; }
+        public String getUsername() {
+            return username;
+        }
 
-        public String getPassword() { return password; }
-        public void setPassword(String password) { this.password = password; }
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
     }
 
     public static class AuthResponse {
         private String token;
+        private Long id;
+        private String username;
+        private String firstName;
+        private String lastName;
+        private String role;
 
-        public AuthResponse(String token) {
+        public AuthResponse(String token, Long id, String username, String firstName, String lastName, String role) {
+            this.token = token;
+            this.id = id;
+            this.username = username;
+            this.firstName = firstName;
+            this.lastName = lastName;
+            this.role = role;
+        }
+
+        public String getToken() {
+            return token;
+        }
+
+        public void setToken(String token) {
             this.token = token;
         }
 
-        public String getToken() { return token; }
-        public void setToken(String token) { this.token = token; }
+        public Long getId() {
+            return id;
+        }
+
+        public void setId(Long id) {
+            this.id = id;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getFirstName() {
+            return firstName;
+        }
+
+        public void setFirstName(String firstName) {
+            this.firstName = firstName;
+        }
+
+        public String getLastName() {
+            return lastName;
+        }
+
+        public void setLastName(String lastName) {
+            this.lastName = lastName;
+        }
+
+        public String getRole() {
+            return role;
+        }
+
+        public void setRole(String role) {
+            this.role = role;
+        }
     }
 }

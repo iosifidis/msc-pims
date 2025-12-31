@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from './axiosConfig';
 
 const AuthContext = createContext(null);
 
@@ -14,8 +15,8 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     try {
       const savedUser = localStorage.getItem('user');
-      return savedUser && savedUser !== 'undefined' && savedUser !== 'null' 
-        ? JSON.parse(savedUser) 
+      return savedUser && savedUser !== 'undefined' && savedUser !== 'null'
+        ? JSON.parse(savedUser)
         : null;
     } catch (e) {
       console.error("Error parsing user", e);
@@ -25,8 +26,8 @@ export const AuthProvider = ({ children }) => {
 
   const [token, setToken] = useState(() => {
     const savedToken = localStorage.getItem('token');
-    return savedToken && savedToken !== 'undefined' && savedToken !== 'null' 
-      ? savedToken 
+    return savedToken && savedToken !== 'undefined' && savedToken !== 'null'
+      ? savedToken
       : null;
   });
 
@@ -41,6 +42,12 @@ export const AuthProvider = ({ children }) => {
     setToken(authToken);
     localStorage.setItem('user', JSON.stringify(userData));
     localStorage.setItem('token', authToken);
+  };
+
+  const register = async (userData) => {
+    // We just return the promise and let the component handle success/error
+    // because the flow might be different (e.g. redirect to login vs auto-login)
+    return await api.post('/api/auth/register', userData);
   };
 
   const logout = () => {
@@ -58,6 +65,7 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!token, // Αν υπάρχει token, θεωρούμε ότι είναι authenticated
     loading,
     login,
+    register,
     logout
   };
 

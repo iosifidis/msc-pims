@@ -22,4 +22,18 @@ api.interceptors.request.use(
   }
 );
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem('token');
+      // Optional: Redirect to login or reload the page
+      // window.location.href = '/login'; 
+      // Using window.location.reload() might be safer if the app state is messy
+      window.location.reload();
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;

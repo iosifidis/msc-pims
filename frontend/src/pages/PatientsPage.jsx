@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../context/axiosConfig';
 import { useAuth } from '../context/AuthContext';
 import PatientHistoryModal from '../components/PatientHistoryModal';
 
@@ -55,7 +55,7 @@ const PatientsPage = () => {
             // OR use /api/patients if it exists.
 
             // Let's try to fetch clients and extract pets to ensure we have owner info which is crucial for search.
-            const response = await axios.get('http://localhost:8080/api/clients', {
+            const response = await api.get('http://localhost:8080/api/clients', {
                 headers: { Authorization: `Bearer ${token}` }
             });
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../context/axiosConfig';
 import { useAuth } from '../context/AuthContext';
 import ClientSearchDropdown from '../components/ClientSearchDropdown';
 
@@ -23,7 +23,7 @@ const ClientsPage = () => {
 
     const fetchClients = async () => {
         try {
-            const response = await axios.get('http://localhost:8080/api/clients', {
+            const response = await api.get('http://localhost:8080/api/clients', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setClients(response.data || []);
@@ -80,7 +80,7 @@ const ClientsPage = () => {
         if (!window.confirm('Are you sure you want to delete this pet owner? This action cannot be undone.')) return;
 
         try {
-            await axios.delete(`http://localhost:8080/api/clients/${id}`, {
+            await api.delete(`http://localhost:8080/api/clients/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchClients();
@@ -237,12 +237,14 @@ const ClientsPage = () => {
                 />
             )}
 
-            <PetManagerModal
-                client={selectedClient}
-                allClients={clients}
-                onClose={closeModals}
-                token={token}
-            />
+            {showPetModal && (
+                <PetManagerModal
+                    client={selectedClient}
+                    allClients={clients}
+                    onClose={closeModals}
+                    token={token}
+                />
+            )}
 
             {showHistoryModal && selectedClient && (
                 <ClientHistoryModal
@@ -309,13 +311,13 @@ const ClientModal = ({ client, onClose, onSave, token, readOnly = false }) => {
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
             if (client) {
-                await axios.put(
+                await api.put(
                     `http://localhost:8080/api/clients/${client.id}`,
                     formData,
                     config
                 );
             } else {
-                await axios.post('http://localhost:8080/api/clients', formData, config);
+                await api.post('http://localhost:8080/api/clients', formData, config);
             }
 
             onSave();
@@ -528,7 +530,7 @@ const PetManagerModal = ({ client, allClients, onClose, token }) => {
             // Let's try standard REST update with ownerId first if the payload supports it, 
             // but usually owner is immutable in simple updates. 
             // Let's try a semantic URL which is likely implemented for this specific story.
-            await axios.put(
+            await api.put(
                 `http://localhost:8080/api/patients/${transferPetId}/owner/${targetClient.id}`,
                 {},
                 { headers: { Authorization: `Bearer ${token}` } }
@@ -584,7 +586,7 @@ const PetManagerModal = ({ client, allClients, onClose, token }) => {
     const fetchPets = async () => {
         setLoading(true);
         try {
-            const response = await axios.get(
+            const response = await api.get(
                 `http://localhost:8080/api/patients/owner/${client.id}`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -642,14 +644,14 @@ const PetManagerModal = ({ client, allClients, onClose, token }) => {
         try {
             if (editingPetId) {
                 // UPDATE existing pet
-                await axios.put(
+                await api.put(
                     `http://localhost:8080/api/patients/${editingPetId}`,
                     petFormData,
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
             } else {
                 // CREATE new pet
-                await axios.post(
+                await api.post(
                     `http://localhost:8080/api/clients/${client.id}/pets`,
                     petFormData,
                     { headers: { Authorization: `Bearer ${token}` } }
@@ -670,7 +672,7 @@ const PetManagerModal = ({ client, allClients, onClose, token }) => {
         if (!window.confirm('Are you sure you want to delete this pet? This action cannot be undone.')) return;
 
         try {
-            await axios.delete(
+            await api.delete(
                 `http://localhost:8080/api/patients/${petId}`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -685,7 +687,7 @@ const PetManagerModal = ({ client, allClients, onClose, token }) => {
         if (!window.confirm('Mark this pet as deceased? This action cannot be undone.')) return;
 
         try {
-            await axios.put(
+            await api.put(
                 `http://localhost:8080/api/patients/${petId}/status`,
                 { isDeceased: true },
                 { headers: { Authorization: `Bearer ${token}` } }
@@ -1026,7 +1028,7 @@ const ClientHistoryModal = ({ client, onClose, token }) => {
     const fetchRecords = async () => {
         setLoading(true);
         try {
-            const response = await axios.get(
+            const response = await api.get(
                 `http://localhost:8080/api/medical-records/owner/${client.id}`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -1203,7 +1205,7 @@ const MedicalRecordModal = ({ record, onClose, onSave, token }) => {
                 treatment: formData.treatment
             };
 
-            await axios.put(
+            await api.put(
                 `http://localhost:8080/api/medical-records/${record.id}`,
                 payload,
                 { headers: { Authorization: `Bearer ${token}` } }

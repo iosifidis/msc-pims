@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../context/axiosConfig';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -59,7 +59,7 @@ const ProfilePage = () => {
             }
 
             // Assuming endpoint is PUT /api/users/{id}
-            await axios.put(`http://localhost:8080/api/users/${user.id}`, payload, {
+            await api.put(`http://localhost:8080/api/users/${user.id}`, payload, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
@@ -84,7 +84,7 @@ const ProfilePage = () => {
         }
 
         try {
-            await axios.delete(`http://localhost:8080/api/users/${user.id}`, {
+            await api.delete(`http://localhost:8080/api/users/${user.id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             alert("Account deleted.");
