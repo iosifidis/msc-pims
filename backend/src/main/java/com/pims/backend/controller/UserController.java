@@ -1,34 +1,57 @@
 package com.pims.backend.controller;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
+import com.pims.backend.dto.auth.RegisterRequest;
 import com.pims.backend.entity.AppUser;
-import com.pims.backend.repository.AppUserRepository;
-import com.pims.backend.repository.RoleRepository;
+import com.pims.backend.service.UserService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 public class UserController {
 
-    private final AppUserRepository appUserRepository;
-    private final RoleRepository roleRepository;
+    private final UserService userService;
 
-    public UserController(AppUserRepository appUserRepository, RoleRepository roleRepository) {
-        this.appUserRepository = appUserRepository;
-        this.roleRepository = roleRepository;
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+
+    @GetMapping
+    public List<AppUser> getAllUsers() {
+        return userService.getAllUsers();
     }
 
     @GetMapping("/vets")
     public List<AppUser> getVets() {
-        return appUserRepository.findAll().stream()
-                .filter(user -> user.getRole() != null && "VET".equals(user.getRole().getName()))
-                .collect(Collectors.toList());
+        return userService.getVets();
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<AppUser> getUserById(@PathVariable Long id) {
+        return userService.getUserById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping
+    public ResponseEntity<AppUser> createUser(@RequestBody RegisterRequest request) {
+        try {
+            return ResponseEntity.ok(userService.createUser(request));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        try {
+            userService.deleteUser(id);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 }

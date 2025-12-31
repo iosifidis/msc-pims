@@ -11,7 +11,8 @@ public class ClientRequest {
     private String phoneNumber; // Alternative field name from frontend
     private String address;
     private Boolean gdprConsent;
-    
+    private Boolean isStrayCaretaker;
+
     // Initial Pet fields (optional)
     private String petName;
     private String petSpecies; // DOG, CAT, RABBIT, BIRD, OTHER
@@ -21,7 +22,9 @@ public class ClientRequest {
     public ClientRequest() {
     }
 
-    public ClientRequest(String firstName, String lastName, String email, String afm, String adt, String phone, String phoneNumber, String address, Boolean gdprConsent, String petName, String petSpecies, String petBreed, String petSex) {
+    public ClientRequest(String firstName, String lastName, String email, String afm, String adt, String phone,
+            String phoneNumber, String address, Boolean gdprConsent, String petName, String petSpecies, String petBreed,
+            String petSex) {
         this.firstName = firstName;
         this.lastName = lastName;
         this.email = email;
@@ -115,6 +118,14 @@ public class ClientRequest {
 
     public void setGdprConsent(Boolean gdprConsent) {
         this.gdprConsent = gdprConsent;
+    }
+
+    public Boolean getIsStrayCaretaker() {
+        return isStrayCaretaker;
+    }
+
+    public void setIsStrayCaretaker(Boolean isStrayCaretaker) {
+        this.isStrayCaretaker = isStrayCaretaker;
     }
 
     public String getPetName() {

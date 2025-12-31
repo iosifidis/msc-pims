@@ -8,6 +8,7 @@ public class PatientRequest {
     private String breed;
     private String sex; // MALE, FEMALE
     private LocalDate birthDate;
+    private Boolean isDateOfBirthApproximate;
     private String microchipNumber;
     private LocalDate microchipDate;
     private Boolean isSterilized;
@@ -18,7 +19,9 @@ public class PatientRequest {
     public PatientRequest() {
     }
 
-    public PatientRequest(String name, String species, String breed, String sex, LocalDate birthDate, String microchipNumber, LocalDate microchipDate, Boolean isSterilized, LocalDate sterilizationDate, Float weight, Boolean isDeceased) {
+    public PatientRequest(String name, String species, String breed, String sex, LocalDate birthDate,
+            String microchipNumber, LocalDate microchipDate, Boolean isSterilized, LocalDate sterilizationDate,
+            Float weight, Boolean isDeceased) {
         this.name = name;
         this.species = species;
         this.breed = breed;
@@ -70,6 +73,14 @@ public class PatientRequest {
 
     public void setBirthDate(LocalDate birthDate) {
         this.birthDate = birthDate;
+    }
+
+    public Boolean getIsDateOfBirthApproximate() {
+        return isDateOfBirthApproximate;
+    }
+
+    public void setIsDateOfBirthApproximate(Boolean isDateOfBirthApproximate) {
+        this.isDateOfBirthApproximate = isDateOfBirthApproximate;
     }
 
     public String getMicrochipNumber() {

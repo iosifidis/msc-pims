@@ -9,7 +9,7 @@ public class MedicalRecordRequest {
     private String assessment;
     private String plan;
     private BigDecimal cost;
-    
+
     // Vital Signs Fields
     private Double weight; // in Kg
     private Double temperature; // in Celsius
@@ -21,7 +21,9 @@ public class MedicalRecordRequest {
     public MedicalRecordRequest() {
     }
 
-    public MedicalRecordRequest(Long appointmentId, String subjective, String objective, String assessment, String plan, BigDecimal cost, Double weight, Double temperature, Integer heartRate, Integer respiratoryRate, String mucousMembranes, Double crt) {
+    public MedicalRecordRequest(Long appointmentId, String subjective, String objective, String assessment, String plan,
+            BigDecimal cost, Double weight, Double temperature, Integer heartRate, Integer respiratoryRate,
+            String mucousMembranes, Double crt) {
         this.appointmentId = appointmentId;
         this.subjective = subjective;
         this.objective = objective;
@@ -130,5 +132,34 @@ public class MedicalRecordRequest {
 
     public void setCrt(Double crt) {
         this.crt = crt;
+    }
+
+    // Legacy/Simple fields
+    private String diagnosis;
+    private String treatment;
+    private String notes;
+
+    public String getDiagnosis() {
+        return diagnosis;
+    }
+
+    public void setDiagnosis(String diagnosis) {
+        this.diagnosis = diagnosis;
+    }
+
+    public String getTreatment() {
+        return treatment;
+    }
+
+    public void setTreatment(String treatment) {
+        this.treatment = treatment;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
     }
 }

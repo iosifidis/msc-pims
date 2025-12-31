@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const MainLayout = ({ children }) => {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -17,10 +17,9 @@ const MainLayout = ({ children }) => {
           <NavLink
             to="/"
             className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                isActive
-                  ? "bg-blue-600 text-white shadow-lg"
-                  : "text-gray-400 hover:bg-gray-800 hover:text-white"
+              `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
+                ? "bg-blue-600 text-white shadow-lg"
+                : "text-gray-400 hover:bg-gray-800 hover:text-white"
               }`
             }
           >
@@ -31,10 +30,9 @@ const MainLayout = ({ children }) => {
           <NavLink
             to="/appointments"
             className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                isActive
-                  ? "bg-blue-600 text-white shadow-lg"
-                  : "text-gray-400 hover:bg-gray-800 hover:text-white"
+              `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
+                ? "bg-blue-600 text-white shadow-lg"
+                : "text-gray-400 hover:bg-gray-800 hover:text-white"
               }`
             }
           >
@@ -45,10 +43,9 @@ const MainLayout = ({ children }) => {
           <NavLink
             to="/clients"
             className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                isActive
-                  ? "bg-blue-600 text-white shadow-lg"
-                  : "text-gray-400 hover:bg-gray-800 hover:text-white"
+              `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
+                ? "bg-blue-600 text-white shadow-lg"
+                : "text-gray-400 hover:bg-gray-800 hover:text-white"
               }`
             }
           >
@@ -59,19 +56,47 @@ const MainLayout = ({ children }) => {
           <NavLink
             to="/patients"
             className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                isActive
-                  ? "bg-blue-600 text-white shadow-lg"
-                  : "text-gray-400 hover:bg-gray-800 hover:text-white"
+              `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
+                ? "bg-blue-600 text-white shadow-lg"
+                : "text-gray-400 hover:bg-gray-800 hover:text-white"
               }`
             }
           >
             <span className="text-xl">🐾</span>
             <span className="font-medium">Patients</span>
           </NavLink>
+
+          {/* Admin Only - Users */}
+          {(user?.role === 'ADMIN' || user?.role === 'ROLE_ADMIN') && (
+            <NavLink
+              to="/users"
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
+                  ? "bg-blue-600 text-white shadow-lg"
+                  : "text-gray-400 hover:bg-gray-800 hover:text-white"
+                }`
+              }
+            >
+              <span className="text-xl">🛡️</span>
+              <span className="font-medium">Users</span>
+            </NavLink>
+          )}
         </nav>
 
-        <div className="p-4 border-t border-gray-800">
+        <div className="p-4 border-t border-gray-800 space-y-2">
+          <NavLink
+            to="/profile"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
+                ? "bg-blue-600 text-white shadow-lg"
+                : "text-gray-400 hover:bg-gray-800 hover:text-white"
+              }`
+            }
+          >
+            <span className="text-xl">👤</span>
+            <span className="font-medium">My Profile</span>
+          </NavLink>
+
           <button
             onClick={logout}
             className="flex items-center gap-3 px-4 py-3 w-full rounded-lg text-gray-400 hover:bg-red-900/20 hover:text-red-400 transition-colors"

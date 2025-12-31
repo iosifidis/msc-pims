@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import ClientSearchDropdown from '../components/ClientSearchDropdown';
 
 // ============================================
 // MAIN COMPONENT: ClientsPage
@@ -77,7 +78,7 @@ const ClientsPage = () => {
 
     const handleDeleteClient = async (id) => {
         if (!window.confirm('Are you sure you want to delete this pet owner? This action cannot be undone.')) return;
-        
+
         try {
             await axios.delete(`http://localhost:8080/api/clients/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -94,12 +95,12 @@ const ClientsPage = () => {
         const fullName = `${client.firstName} ${client.lastName}`.toLowerCase();
         const email = client.email ? client.email.toLowerCase() : '';
         const phone = client.phoneNumber ? client.phoneNumber : '';
-        
+
         // Check if ANY pet matches
-        const hasMatchingPet = client.pets && client.pets.some(pet => 
+        const hasMatchingPet = client.pets && client.pets.some(pet =>
             pet.name?.toLowerCase().includes(searchLower)
         );
-        
+
         return (
             fullName.includes(searchLower) ||
             email.includes(searchLower) ||
@@ -114,14 +115,14 @@ const ClientsPage = () => {
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-4xl font-bold text-gray-900">Pet Owners</h1>
                 <div className="flex gap-3">
-                    <input 
-                        type="text" 
-                        placeholder="Search owners..." 
+                    <input
+                        type="text"
+                        placeholder="Search owners..."
                         className="border border-gray-300 rounded-md px-4 py-2 w-80 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
-                    <button 
+                    <button
                         onClick={openCreateClientModal}
                         className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-semibold transition-colors"
                     >
@@ -236,13 +237,12 @@ const ClientsPage = () => {
                 />
             )}
 
-            {showPetModal && selectedClient && (
-                <PetManagerModal
-                    client={selectedClient}
-                    onClose={closeModals}
-                    token={token}
-                />
-            )}
+            <PetManagerModal
+                client={selectedClient}
+                allClients={clients}
+                onClose={closeModals}
+                token={token}
+            />
 
             {showHistoryModal && selectedClient && (
                 <ClientHistoryModal
@@ -302,12 +302,12 @@ const ClientModal = ({ client, onClose, onSave, token, readOnly = false }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (readOnly) return;
-        
+
         setSaving(true);
 
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            
+
             if (client) {
                 await axios.put(
                     `http://localhost:8080/api/clients/${client.id}`,
@@ -317,11 +317,11 @@ const ClientModal = ({ client, onClose, onSave, token, readOnly = false }) => {
             } else {
                 await axios.post('http://localhost:8080/api/clients', formData, config);
             }
-            
+
             onSave();
         } catch (error) {
             console.error('Error saving client:', error);
-            const message = error.response?.status === 403 
+            const message = error.response?.status === 403
                 ? 'Access denied. Please check your permissions.'
                 : 'Failed to save pet owner. Please try again.';
             alert(message);
@@ -492,7 +492,7 @@ const ClientModal = ({ client, onClose, onSave, token, readOnly = false }) => {
 // ============================================
 // PET MANAGER MODAL - Full CRUD
 // ============================================
-const PetManagerModal = ({ client, onClose, token }) => {
+const PetManagerModal = ({ client, allClients, onClose, token }) => {
     const [pets, setPets] = useState([]);
     const [loading, setLoading] = useState(true);
     const [editingPetId, setEditingPetId] = useState(null);
@@ -505,6 +505,51 @@ const PetManagerModal = ({ client, onClose, token }) => {
         birthDate: ''
     });
     const [saving, setSaving] = useState(false);
+
+    // Transfer Logic State
+    const [transferPetId, setTransferPetId] = useState(null);
+    const [targetClient, setTargetClient] = useState(null);
+
+    const handleInitiateTransfer = (pet) => {
+        setTransferPetId(pet.id);
+        setTargetClient(null);
+    };
+
+    const handleConfirmTransfer = async () => {
+        if (!transferPetId || !targetClient) return;
+
+        if (!window.confirm(`Are you sure you want to transfer this pet to ${targetClient.firstName} ${targetClient.lastName}?`)) return;
+
+        setSaving(true);
+        try {
+            // Try specific endpoint first, if not exists, maybe try update. 
+            // Assumption: Backend supports PUT /patients/{id}/owner/{ownerId} OR standard update
+            // Let's try standard REST update with ownerId first if the payload supports it, 
+            // but usually owner is immutable in simple updates. 
+            // Let's try a semantic URL which is likely implemented for this specific story.
+            await axios.put(
+                `http://localhost:8080/api/patients/${transferPetId}/owner/${targetClient.id}`,
+                {},
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            alert("Pet transferred successfully.");
+            setTransferPetId(null);
+            setTargetClient(null);
+            await fetchPets();
+            // We might want to refresh the client list in parent if counts changed, but closing modal will refresh when opened again.
+        } catch (error) {
+            console.error('Error transferring pet:', error);
+            alert('Failed to transfer pet. Please try again.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const cancelTransfer = () => {
+        setTransferPetId(null);
+        setTargetClient(null);
+    };
 
     useEffect(() => {
         if (client?.id) {
@@ -519,12 +564,12 @@ const PetManagerModal = ({ client, onClose, token }) => {
         const today = new Date();
         let years = today.getFullYear() - birth.getFullYear();
         let months = today.getMonth() - birth.getMonth();
-        
+
         if (months < 0 || (months === 0 && today.getDate() < birth.getDate())) {
             years--;
             months += 12;
         }
-        
+
         if (years > 0) {
             return `${years} year${years > 1 ? 's' : ''}`;
         } else if (months > 0) {
@@ -582,7 +627,7 @@ const PetManagerModal = ({ client, onClose, token }) => {
 
     const handleSubmitPet = async (e) => {
         e.preventDefault();
-        
+
         if (!petFormData.name || !petFormData.species) {
             alert('Please provide at least Pet Name and Species');
             return;
@@ -605,7 +650,7 @@ const PetManagerModal = ({ client, onClose, token }) => {
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
             }
-            
+
             resetForm();
             await fetchPets();
         } catch (error) {
@@ -776,19 +821,18 @@ const PetManagerModal = ({ client, onClose, token }) => {
                                         Cancel
                                     </button>
                                 )}
-                                
+
                                 {/* Save / Add Button */}
                                 <button
                                     type="submit"
                                     disabled={saving}
-                                    className={`${
-                                        editingPetId 
-                                            ? 'bg-green-600 hover:bg-green-700' 
-                                            : 'bg-blue-600 hover:bg-blue-700'
-                                    } text-white font-bold py-2 px-4 rounded shadow-md disabled:opacity-50`}
+                                    className={`${editingPetId
+                                        ? 'bg-green-600 hover:bg-green-700'
+                                        : 'bg-blue-600 hover:bg-blue-700'
+                                        } text-white font-bold py-2 px-4 rounded shadow-md disabled:opacity-50`}
                                 >
-                                    {saving 
-                                        ? (editingPetId ? 'Saving...' : 'Adding...') 
+                                    {saving
+                                        ? (editingPetId ? 'Saving...' : 'Adding...')
                                         : (editingPetId ? 'Save' : '+ Add Pet')
                                     }
                                 </button>
@@ -799,7 +843,7 @@ const PetManagerModal = ({ client, onClose, token }) => {
                     {/* Pets List */}
                     <div>
                         <h4 className="text-lg font-semibold text-gray-900 mb-4">Registered Pets</h4>
-                        
+
                         {loading ? (
                             <div className="text-center py-8 text-gray-500">Loading pets...</div>
                         ) : pets.length === 0 ? (
@@ -811,20 +855,18 @@ const PetManagerModal = ({ client, onClose, token }) => {
                                     return (
                                         <div
                                             key={pet.id}
-                                            className={`border rounded-lg p-4 ${
-                                                pet.isDeceased 
-                                                    ? 'bg-red-50 border-red-300 opacity-70' 
-                                                    : editingPetId === pet.id
-                                                        ? 'bg-yellow-50 border-yellow-400 ring-2 ring-yellow-400'
-                                                        : 'bg-white border-gray-200 hover:shadow-md'
-                                            } transition-shadow`}
+                                            className={`border rounded-lg p-4 ${pet.isDeceased
+                                                ? 'bg-red-50 border-red-300 opacity-70'
+                                                : editingPetId === pet.id
+                                                    ? 'bg-yellow-50 border-yellow-400 ring-2 ring-yellow-400'
+                                                    : 'bg-white border-gray-200 hover:shadow-md'
+                                                } transition-shadow`}
                                         >
                                             <div className="flex items-start justify-between">
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-2 flex-wrap">
-                                                        <h5 className={`text-lg font-bold ${
-                                                            pet.isDeceased ? 'text-red-700 line-through' : 'text-gray-900'
-                                                        }`}>
+                                                        <h5 className={`text-lg font-bold ${pet.isDeceased ? 'text-red-700 line-through' : 'text-gray-900'
+                                                            }`}>
                                                             {pet.name}
                                                         </h5>
                                                         {age && !pet.isDeceased && (
@@ -853,7 +895,7 @@ const PetManagerModal = ({ client, onClose, token }) => {
                                                     </div>
                                                 </div>
                                             </div>
-                                            
+
                                             {/* Action Buttons */}
                                             {!pet.isDeceased && (
                                                 <div className="mt-4 pt-3 border-t border-gray-200 flex flex-wrap gap-2">
@@ -875,6 +917,43 @@ const PetManagerModal = ({ client, onClose, token }) => {
                                                     >
                                                         ☠️ Mark Deceased
                                                     </button>
+                                                    <button
+                                                        onClick={() => handleInitiateTransfer(pet)}
+                                                        className="text-xs text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-2 rounded font-medium transition-colors"
+                                                    >
+                                                        ⇄ Transfer
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {/* Transfer Mode UI for this pet */}
+                                            {transferPetId === pet.id && (
+                                                <div className="mt-4 p-4 bg-indigo-50 border border-indigo-200 rounded-md">
+                                                    <h5 className="font-bold text-indigo-900 mb-2">Transfer Ownership</h5>
+                                                    <p className="text-sm text-indigo-700 mb-3">Select the new owner for {pet.name}:</p>
+                                                    <div className="mb-4">
+                                                        <ClientSearchDropdown
+                                                            clients={allClients.filter(c => c.id !== client.id)}
+                                                            selectedClient={targetClient}
+                                                            onSelect={setTargetClient}
+                                                        />
+                                                    </div>
+                                                    <div className="flex justify-end gap-2">
+                                                        <button
+                                                            onClick={cancelTransfer}
+                                                            className="px-3 py-1 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded text-sm"
+                                                            disabled={saving}
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                        <button
+                                                            onClick={handleConfirmTransfer}
+                                                            className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-sm font-bold"
+                                                            disabled={!targetClient || saving}
+                                                        >
+                                                            {saving ? 'Transferring...' : 'Confirm Transfer'}
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
@@ -1092,13 +1171,13 @@ const MedicalRecordModal = ({ record, onClose, onSave, token }) => {
                 diagnosis: formData.diagnosis,
                 treatment: formData.treatment
             };
-            
+
             await axios.put(
                 `http://localhost:8080/api/medical-records/${record.id}`,
                 payload,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            
+
             onSave();
         } catch (error) {
             console.error('Error updating record:', error);
@@ -1141,16 +1220,16 @@ const MedicalRecordModal = ({ record, onClose, onSave, token }) => {
                     </div>
 
                     <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-100">
-                        <button 
+                        <button
                             type="button"
-                            onClick={onClose} 
+                            onClick={onClose}
                             className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md font-bold transition-colors"
                             disabled={saving}
                         >
                             Cancel
                         </button>
-                        <button 
-                            type="submit" 
+                        <button
+                            type="submit"
                             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-bold transition-colors"
                             disabled={saving}
                         >

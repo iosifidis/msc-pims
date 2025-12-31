@@ -19,11 +19,11 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     boolean existsByVetIdAndStartTimeBetween(Long vetId, LocalDateTime start, LocalDateTime end);
 
     @Query("SELECT a FROM Appointment a WHERE " +
-           "LOWER(a.client.firstName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(a.client.lastName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(a.client.phone) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(a.patient.name) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(a.reason) LIKE LOWER(CONCAT('%', :query, '%'))")
+            "LOWER(a.client.firstName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+            "LOWER(a.client.lastName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+            "LOWER(a.client.phone) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+            "LOWER(a.patient.name) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+            "LOWER(a.reason) LIKE LOWER(CONCAT('%', :query, '%'))")
     List<Appointment> searchAppointments(@Param("query") String query);
 
     List<Appointment> findByClientId(Long clientId);
@@ -31,4 +31,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     List<Appointment> findByPatientId(Long patientId);
 
     Appointment findFirstByVetIdAndStartTimeAfterOrderByStartTimeAsc(Long vetId, LocalDateTime startTime);
+
+    List<Appointment> findByVetId(Long vetId);
 }

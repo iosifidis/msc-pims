@@ -61,10 +61,14 @@ public class Client {
     @JsonManagedReference
     private List<Patient> pets = new ArrayList<>();
 
+    @Column(name = "is_stray_caretaker")
+    private Boolean isStrayCaretaker = false;
+
     public Client() {
     }
 
-    public Client(Long id, String firstName, String lastName, String email, String afm, String adt, String phone, String address, Boolean gdprConsent, BigDecimal balance, List<Patient> pets) {
+    public Client(Long id, String firstName, String lastName, String email, String afm, String adt, String phone,
+            String address, Boolean gdprConsent, BigDecimal balance, List<Patient> pets) {
         this.id = id;
         this.firstName = firstName;
         this.lastName = lastName;
@@ -101,36 +105,99 @@ public class Client {
     }
 
     // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getId() {
+        return id;
+    }
 
-    public String getFirstName() { return firstName; }
-    public void setFirstName(String firstName) { this.firstName = firstName; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public String getLastName() { return lastName; }
-    public void setLastName(String lastName) { this.lastName = lastName; }
+    public String getFirstName() {
+        return firstName;
+    }
 
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
 
-    public String getAfm() { return afm; }
-    public void setAfm(String afm) { this.afm = afm; }
+    public String getLastName() {
+        return lastName;
+    }
 
-    public String getAdt() { return adt; }
-    public void setAdt(String adt) { this.adt = adt; }
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
 
-    public String getPhone() { return phone; }
-    public void setPhone(String phone) { this.phone = phone; }
+    public String getEmail() {
+        return email;
+    }
 
-    public String getAddress() { return address; }
-    public void setAddress(String address) { this.address = address; }
+    public void setEmail(String email) {
+        this.email = email;
+    }
 
-    public Boolean getGdprConsent() { return gdprConsent; }
-    public void setGdprConsent(Boolean gdprConsent) { this.gdprConsent = gdprConsent; }
+    public String getAfm() {
+        return afm;
+    }
 
-    public BigDecimal getBalance() { return balance; }
-    public void setBalance(BigDecimal balance) { this.balance = balance; }
+    public void setAfm(String afm) {
+        this.afm = afm;
+    }
 
-    public List<Patient> getPets() { return pets; }
-    public void setPets(List<Patient> pets) { this.pets = pets; }
+    public String getAdt() {
+        return adt;
+    }
+
+    public void setAdt(String adt) {
+        this.adt = adt;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public Boolean getGdprConsent() {
+        return gdprConsent;
+    }
+
+    public void setGdprConsent(Boolean gdprConsent) {
+        this.gdprConsent = gdprConsent;
+    }
+
+    public BigDecimal getBalance() {
+        return balance;
+    }
+
+    public void setBalance(BigDecimal balance) {
+        this.balance = balance;
+    }
+
+    public List<Patient> getPets() {
+        return pets;
+    }
+
+    public void setPets(List<Patient> pets) {
+        this.pets = pets;
+    }
+
+    public Boolean getIsStrayCaretaker() {
+        return isStrayCaretaker;
+    }
+
+    public void setIsStrayCaretaker(Boolean isStrayCaretaker) {
+        this.isStrayCaretaker = isStrayCaretaker;
+    }
 }
