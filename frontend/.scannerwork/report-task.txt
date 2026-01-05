@@ -1,0 +1,6 @@
+projectKey=vet-clinic-frontend
+serverUrl=http://localhost:9001
+serverVersion=9.9.8.100196
+dashboardUrl=http://localhost:9001/dashboard?id=vet-clinic-frontend
+ceTaskId=AZuPvP35FQfzzLG78bsC
+ceTaskUrl=http://localhost:9001/api/ce/task?id=AZuPvP35FQfzzLG78bsC
