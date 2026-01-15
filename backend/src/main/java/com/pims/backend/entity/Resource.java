@@ -4,14 +4,9 @@ import com.pims.backend.enums.ResourceType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.*;
 
 @Entity
 @Table(name = "resources")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class Resource {
 
     @Id
@@ -29,4 +24,46 @@ public class Resource {
 
     @Column(name = "color_code")
     private String colorCode;
+
+    public Resource() {
+    }
+
+    public Resource(Long id, String name, ResourceType type, String colorCode) {
+        this.id = id;
+        this.name = name;
+        this.type = type;
+        this.colorCode = colorCode;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public ResourceType getType() {
+        return type;
+    }
+
+    public void setType(ResourceType type) {
+        this.type = type;
+    }
+
+    public String getColorCode() {
+        return colorCode;
+    }
+
+    public void setColorCode(String colorCode) {
+        this.colorCode = colorCode;
+    }
 }
