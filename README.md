@@ -1,4 +1,4 @@
-# MSc PIMS - Patient Information Management System
+# MSc PIMS - Practice Information Management System
 
 This project is a full-stack web application designed for managing patient information, likely within a veterinary or medical context. It is composed of a decoupled architecture with a Spring Boot backend, a React-based frontend, and a PostgreSQL database.
 
