@@ -380,7 +380,7 @@ const DashboardPage = () => {
 
             return {
                 id: appt.id,
-                title: `${appt.client?.firstName || ''} ${appt.client?.lastName || ''} - ${appt.patient?.name || ''}${isExpired ? ' (No Show)' : ''}`,
+                title: `${appt.client?.firstName || ''} ${appt.client?.lastName || ''} - ${appt.patient?.name || ''} (Vet: ${appt.vet?.firstName || appt.vet?.username || '?'})${isExpired ? ' (No Show)' : ''}`,
                 start: toLocalISOString(start),
                 end: toLocalISOString(end),
                 allDay: false,
@@ -1089,7 +1089,7 @@ const DashboardPage = () => {
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Veterinarian <span className="text-red-500">*</span></label>
                                     <select name="vetId" value={formData.vetId} onChange={handleFormChange} className="w-full border border-gray-300 rounded-md px-4 py-2" disabled={isLocked}>
                                         <option value="">Select a vet...</option>
-                                        {vets.map(v => <option key={v.id} value={v.id}>{v.fullName || v.username}</option>)}
+                                        {vets.map(v => <option key={v.id} value={v.id}>{v.firstName && v.lastName ? `${v.firstName} ${v.lastName}` : v.username}</option>)}
                                     </select>
                                 </div>
                                 <div>

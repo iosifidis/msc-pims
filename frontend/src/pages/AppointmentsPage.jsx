@@ -542,7 +542,7 @@ const AppointmentsPage = () => {
 
                 return {
                     id: appt.id,
-                    title: `${appt.client?.firstName || ''} ${appt.client?.lastName || ''} - ${appt.patient?.name || ''}${isExpired ? ' (No Show)' : ''}`,
+                    title: `${appt.client?.firstName || ''} ${appt.client?.lastName || ''} - ${appt.patient?.name || ''} (Vet: ${appt.vet?.firstName || appt.vet?.username || '?'})${isExpired ? ' (No Show)' : ''}`,
                     start: toLocalISOString(start),
                     end: toLocalISOString(end),
                     allDay: false,
@@ -1437,7 +1437,7 @@ const AppointmentsPage = () => {
                                         <option value="">Select a vet...</option>
                                         {vets.map(vet => (
                                             <option key={vet.id} value={vet.id}>
-                                                {vet.fullName || vet.username}
+                                                {vet.firstName && vet.lastName ? `${vet.firstName} ${vet.lastName}` : vet.username}
                                             </option>
                                         ))}
                                     </select>

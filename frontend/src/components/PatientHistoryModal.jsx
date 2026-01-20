@@ -13,9 +13,9 @@ const PatientHistoryModal = ({ patient, onClose, onViewRecord, onEditRecord, tok
             axios.get(`${API_BASE_URL}/medical-records/patient/${patient.id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             })
-            .then(res => setRecords(res.data))
-            .catch(err => console.error("Error fetching history:", err))
-            .finally(() => setLoading(false));
+                .then(res => setRecords(res.data))
+                .catch(err => console.error("Error fetching history:", err))
+                .finally(() => setLoading(false));
         }
     }, [patient, token]);
 
@@ -57,7 +57,7 @@ const PatientHistoryModal = ({ patient, onClose, onViewRecord, onEditRecord, tok
                                 {records.map(record => (
                                     <tr key={record.id} className="hover:bg-gray-50">
                                         <td className="px-4 py-3 text-sm text-gray-900">
-                                            {formatDate(record.visitDate || record.createdAt)}
+                                            {formatDate(record.appointment?.startTime || record.visitDate || record.createdAt)}
                                         </td>
                                         <td className="px-4 py-3 text-sm text-gray-900">
                                             {record.appointment?.type || record.appointmentType || 'Visit'}
@@ -68,7 +68,7 @@ const PatientHistoryModal = ({ patient, onClose, onViewRecord, onEditRecord, tok
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex justify-end gap-2">
                                                 {onViewRecord && (
-                                                    <button 
+                                                    <button
                                                         onClick={() => onViewRecord(record)}
                                                         className="text-blue-600 hover:text-blue-800 p-1"
                                                         title="View Details"
@@ -77,7 +77,7 @@ const PatientHistoryModal = ({ patient, onClose, onViewRecord, onEditRecord, tok
                                                     </button>
                                                 )}
                                                 {onEditRecord && (
-                                                    <button 
+                                                    <button
                                                         onClick={() => onEditRecord(record)}
                                                         className="text-green-600 hover:text-green-800 p-1"
                                                         title="Edit Record"
@@ -95,8 +95,8 @@ const PatientHistoryModal = ({ patient, onClose, onViewRecord, onEditRecord, tok
                 </div>
 
                 <div className="flex justify-end mt-8 pt-6 border-t border-gray-100">
-                    <button 
-                        onClick={onClose} 
+                    <button
+                        onClick={onClose}
                         className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md font-bold transition-colors"
                     >
                         Close
