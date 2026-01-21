@@ -54,6 +54,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         // weight/temperature)
         medicalRecord.setWeight(request.getWeight());
         medicalRecord.setTemperature(request.getTemperature());
+        medicalRecord.setCreatedAt(java.time.LocalDateTime.now());
 
         MedicalRecord savedRecord = medicalRecordRepository.save(medicalRecord);
 

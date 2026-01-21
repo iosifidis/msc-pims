@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../context/axiosConfig';
 import { useAuth } from '../context/AuthContext';
 import PatientHistoryModal from '../components/PatientHistoryModal';
+import MedicalRecordModal from '../components/MedicalRecordModal';
 
 // ============================================
 // MAIN COMPONENT: PatientsPage
@@ -15,6 +16,8 @@ const PatientsPage = () => {
 
     const [selectedPatient, setSelectedPatient] = useState(null);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [selectedRecord, setSelectedRecord] = useState(null);
+    const [isEditRecordModalOpen, setIsEditRecordModalOpen] = useState(false);
 
     useEffect(() => {
         fetchPatients();
@@ -90,6 +93,39 @@ const PatientsPage = () => {
     const handleViewHistory = (patient) => {
         setSelectedPatient(patient);
         setShowHistoryModal(true);
+    };
+
+    const handleEditRecord = (record) => {
+        // Close history modal temporarily or keep it open?
+        // ClientsPage keeps history open underneath. We can do the same.
+        // But the modal overlay might conflict if z-indices aren't managed.
+        // ClientsPage manages it by stacking. MedicalRecordModal has z-index 10000.
+        // PatientHistoryModal has z-index 9999. So it should stack fine.
+        setSelectedRecord(record);
+        setIsEditRecordModalOpen(true);
+    };
+
+    const handleRecordSaved = () => {
+        setIsEditRecordModalOpen(false);
+        setSelectedRecord(null);
+        // We might want to refresh the history modal data.
+        // PatientHistoryModal fetches data on mount/update of 'patient'.
+        // If we want to refresh it, we might need a trigger or re-open it.
+        // But PatientHistoryModal doesn't expose a refresh method.
+        // We can force a refresh by closing and opening, or better: 
+        // passing a refresh trigger. 
+        // For now, let's just close the edit modal. Users can reopen history to see changes if needed, 
+        // or we can try to improve PatientHistoryModal to listen to updates.
+        // Actually, let's keep it simple: just close edit modal. 
+        // If the user is viewing history, they might need to close/reopen to see the change.
+        // To fix this properly, PatientHistoryModal could take a 'refreshTrigger' prop.
+        // But for 'Same button as Clients', ClientsPage refreshes the list in its own modal.
+        // Here, PatientHistoryModal manages its own list. 
+        // Let's rely on re-opening for now or just trust it.
+        // Wait, ClientsPage passes `fetchRecords` to `onSave`. 
+        // We can modify PatientHistoryModal to expose a refresh trigger?
+        // Or simply cycle the patient object to trigger useEffect?
+        setSelectedPatient({ ...selectedPatient });
     };
 
     const closeModals = () => {
@@ -199,6 +235,17 @@ const PatientsPage = () => {
                 <PatientHistoryModal
                     patient={selectedPatient}
                     onClose={closeModals}
+                    onEditRecord={handleEditRecord}
+                    token={token}
+                />
+            )}
+
+            {/* Edit Record Modal */}
+            {isEditRecordModalOpen && selectedRecord && (
+                <MedicalRecordModal
+                    record={selectedRecord}
+                    onClose={() => setIsEditRecordModalOpen(false)}
+                    onSave={handleRecordSaved}
                     token={token}
                 />
             )}

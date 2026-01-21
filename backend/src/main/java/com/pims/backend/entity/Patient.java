@@ -8,8 +8,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "patients")
@@ -61,15 +59,12 @@ public class Patient {
     @JsonBackReference
     private Client owner;
 
-    @OneToMany(mappedBy = "patient", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Alert> alerts = new ArrayList<>();
-
     public Patient() {
     }
 
     public Patient(Long id, String name, String breed, LocalDate birthDate, String microchipNumber,
             LocalDate microchipDate, Boolean isSterilized, LocalDate sterilizationDate, Float weight,
-            Boolean isDeceased, Species species, Sex sex, Client owner, List<Alert> alerts) {
+            Boolean isDeceased, Species species, Sex sex, Client owner) {
         this.id = id;
         this.name = name;
         this.breed = breed;
@@ -83,7 +78,6 @@ public class Patient {
         this.species = species;
         this.sex = sex;
         this.owner = owner;
-        this.alerts = alerts;
     }
 
     // Getters and Setters
@@ -197,13 +191,5 @@ public class Patient {
 
     public void setOwner(Client owner) {
         this.owner = owner;
-    }
-
-    public List<Alert> getAlerts() {
-        return alerts;
-    }
-
-    public void setAlerts(List<Alert> alerts) {
-        this.alerts = alerts;
     }
 }
