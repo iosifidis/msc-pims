@@ -59,7 +59,7 @@ const ProfilePage = () => {
             }
 
             // Assuming endpoint is PUT /api/users/{id}
-            await api.put(`http://localhost:8080/api/users/${user.id}`, payload, {
+            await api.put(`/users/${user.id}`, payload, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
@@ -84,7 +84,7 @@ const ProfilePage = () => {
         }
 
         try {
-            await api.delete(`http://localhost:8080/api/users/${user.id}`, {
+            await api.delete(`/users/${user.id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             alert("Account deleted.");
