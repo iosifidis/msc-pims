@@ -41,7 +41,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public List<AppUser> getVets() {
         return appUserRepository.findAll().stream()
-                .filter(user -> user.getRole() != null && "ROLE_VET".equals(user.getRole().getName()))
+                .filter(user -> user.getRole() != null && "VET".equals(user.getRole().getName()))
                 .collect(Collectors.toList());
     }
 
