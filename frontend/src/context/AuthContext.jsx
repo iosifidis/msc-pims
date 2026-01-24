@@ -47,7 +47,7 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     // We just return the promise and let the component handle success/error
     // because the flow might be different (e.g. redirect to login vs auto-login)
-    return await api.post('/api/auth/register', userData);
+    return await api.post('/auth/register', userData);
   };
 
   const logout = () => {

@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import PatientHistoryModal from '../components/PatientHistoryModal';
 import ClientSearchDropdown from '../components/ClientSearchDropdown';
 
-const API_BASE_URL = 'http://localhost:8080/api';
+//const API_BASE_URL = 'http://localhost:8080/api';
 
 // ============================================
 // CONSTANTS & HELPERS
@@ -246,7 +246,7 @@ const DashboardPage = () => {
             const config = {
                 headers: { Authorization: `Bearer ${token}` }
             };
-            const response = await api.get(`${API_BASE_URL}/appointments`, config);
+            const response = await api.get(`/appointments`, config);
             setRawAppointments(response.data || []);
         } catch (error) {
             console.error('Error fetching appointments:', error);
@@ -261,7 +261,7 @@ const DashboardPage = () => {
         }
         setPatientsLoading(true);
         try {
-            const response = await api.get(`${API_BASE_URL}/patients/owner/${clientId}`, {
+            const response = await api.get(`/patients/owner/${clientId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setPatients(response.data);
@@ -284,9 +284,9 @@ const DashboardPage = () => {
 
                 // Fetch Stats, Clients, Vets in parallel
                 const [statsRes, clientsRes, vetsRes] = await Promise.all([
-                    api.get(`${API_BASE_URL}/dashboard/stats`, config),
-                    api.get(`${API_BASE_URL}/clients`, config),
-                    api.get(`${API_BASE_URL}/users/vets`, config).catch(() => ({ data: [] }))
+                    api.get(`/dashboard/stats`, config),
+                    api.get(`/clients`, config),
+                    api.get(`/users/vets`, config).catch(() => ({ data: [] }))
                 ]);
 
                 setDashboardStats({
@@ -575,7 +575,7 @@ const DashboardPage = () => {
         });
 
         try {
-            await api.put(`${API_BASE_URL}/appointments/${event.id}`, payload, {
+            await api.put(`/appointments/${event.id}`, payload, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchAppointments();
@@ -605,9 +605,9 @@ const DashboardPage = () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             if (selectedAppointment?.id) {
-                await api.put(`${API_BASE_URL}/appointments/${selectedAppointment.id}`, payload, config);
+                await api.put(`/appointments/${selectedAppointment.id}`, payload, config);
             } else {
-                await api.post(`${API_BASE_URL}/appointments`, payload, config);
+                await api.post(`/appointments`, payload, config);
             }
             setShowModal(false);
             resetForm();
@@ -624,7 +624,7 @@ const DashboardPage = () => {
 
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await api.delete(`${API_BASE_URL}/appointments/${selectedAppointment.id}`, config);
+            await api.delete(`/appointments/${selectedAppointment.id}`, config);
             setShowModal(false);
             resetForm();
             fetchAppointments();
@@ -639,7 +639,7 @@ const DashboardPage = () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const payload = formatPayload(selectedAppointment, { status: 'IN_PROGRESS' });
-            await api.put(`${API_BASE_URL}/appointments/${selectedAppointment.id}`, payload, config);
+            await api.put(`/appointments/${selectedAppointment.id}`, payload, config);
 
             setExamInitialData(null);
             setIsExamReadOnly(false);
@@ -658,7 +658,7 @@ const DashboardPage = () => {
         if (!selectedAppointment?.id) return;
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const response = await api.get(`${API_BASE_URL}/medical-records/appointment/${selectedAppointment.id}`, config);
+            const response = await api.get(`/medical-records/appointment/${selectedAppointment.id}`, config);
 
             setExamInitialData(response.data);
             setExamAppointment(selectedAppointment);
@@ -699,7 +699,7 @@ const DashboardPage = () => {
                 diagnosis: examData.diagnosis,
                 treatment: examData.treatment
             };
-            await api.post(`${API_BASE_URL}/medical-records`, payload, config);
+            await api.post(`/medical-records`, payload, config);
             setShowExamModal(false);
             setExamAppointment(null);
             fetchAppointments();
@@ -759,7 +759,7 @@ const DashboardPage = () => {
                 diagnosis: examData.diagnosis,
                 treatment: examData.treatment
             };
-            await api.put(`${API_BASE_URL}/medical-records/${examInitialData.id}`, payload, config);
+            await api.put(`/medical-records/${examInitialData.id}`, payload, config);
             setShowExamModal(false);
             setShowHistoryModal(true);
         } catch (error) {

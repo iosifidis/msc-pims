@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import api from '../context/axiosConfig';
 import { useAuth } from '../context/AuthContext';
 import ClientSearchDropdown from '../components/ClientSearchDropdown';
-import MedicalRecordModal from '../components/MedicalRecordModal';
 
 // ============================================
 // MAIN COMPONENT: ClientsPage
@@ -24,7 +23,7 @@ const ClientsPage = () => {
 
     const fetchClients = async () => {
         try {
-            const response = await api.get('http://localhost:8080/api/clients', {
+            const response = await api.get('/clients', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setClients(response.data || []);
@@ -81,7 +80,7 @@ const ClientsPage = () => {
         if (!window.confirm('Are you sure you want to delete this pet owner? This action cannot be undone.')) return;
 
         try {
-            await api.delete(`http://localhost:8080/api/clients/${id}`, {
+            await api.delete(`/clients/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchClients();
@@ -313,12 +312,12 @@ const ClientModal = ({ client, onClose, onSave, token, readOnly = false }) => {
 
             if (client) {
                 await api.put(
-                    `http://localhost:8080/api/clients/${client.id}`,
+                    `/clients/${client.id}`,
                     formData,
                     config
                 );
             } else {
-                await api.post('http://localhost:8080/api/clients', formData, config);
+                await api.post('/clients', formData, config);
             }
 
             onSave();
@@ -532,7 +531,7 @@ const PetManagerModal = ({ client, allClients, onClose, token }) => {
             // but usually owner is immutable in simple updates. 
             // Let's try a semantic URL which is likely implemented for this specific story.
             await api.put(
-                `http://localhost:8080/api/patients/${transferPetId}/owner/${targetClient.id}`,
+                `/patients/${transferPetId}/owner/${targetClient.id}`,
                 {},
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -588,7 +587,7 @@ const PetManagerModal = ({ client, allClients, onClose, token }) => {
         setLoading(true);
         try {
             const response = await api.get(
-                `http://localhost:8080/api/patients/owner/${client.id}`,
+                `/patients/owner/${client.id}`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             setPets(response.data || []);
@@ -653,14 +652,14 @@ const PetManagerModal = ({ client, allClients, onClose, token }) => {
             if (editingPetId) {
                 // UPDATE existing pet
                 await api.put(
-                    `http://localhost:8080/api/patients/${editingPetId}`,
+                    `/patients/${editingPetId}`,
                     payload,
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
             } else {
                 // CREATE new pet
                 await api.post(
-                    `http://localhost:8080/api/clients/${client.id}/patients`,
+                    `/clients/${client.id}/patients`,
                     payload,
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
@@ -681,7 +680,7 @@ const PetManagerModal = ({ client, allClients, onClose, token }) => {
 
         try {
             await api.delete(
-                `http://localhost:8080/api/patients/${petId}`,
+                `/patients/${petId}`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             await fetchPets();
@@ -696,7 +695,7 @@ const PetManagerModal = ({ client, allClients, onClose, token }) => {
 
         try {
             await api.put(
-                `http://localhost:8080/api/patients/${petId}/status`,
+                `/patients/${petId}/status`,
                 { isDeceased: true },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -901,92 +900,98 @@ const PetManagerModal = ({ client, allClients, onClose, token }) => {
                                                 : editingPetId === pet.id
                                                     ? 'bg-yellow-50 border-yellow-400 ring-2 ring-yellow-400'
                                                     : 'bg-white border-gray-200 hover:shadow-md'
-                                                } transition-all`}
+                                                } transition-shadow`}
                                         >
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <h5 className="font-bold text-gray-900 text-lg flex items-center gap-2">
-                                                        {pet.name}
-                                                        {pet.isDeceased && (
-                                                            <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">Deceased</span>
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <h5 className={`text-lg font-bold ${pet.isDeceased ? 'text-red-700 line-through' : 'text-gray-900'
+                                                            }`}>
+                                                            {pet.name}
+                                                        </h5>
+                                                        {age && !pet.isDeceased && (
+                                                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                                                {age} old
+                                                            </span>
                                                         )}
-                                                    </h5>
-                                                    <div className="text-sm text-gray-600 mt-1">
-                                                        {pet.species} • {pet.breed || 'Unknown Breed'} • {pet.sex || 'Unknown Sex'}
-                                                        {age && ` • ${age} old`}
+                                                        {pet.isDeceased && (
+                                                            <span className="text-xs font-bold text-white bg-red-600 px-2 py-1 rounded">
+                                                                DECEASED
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                    {pet.microchip && (
-                                                        <div className="text-xs text-gray-500 mt-1 font-mono bg-gray-100 inline-block px-1 rounded">
-                                                            MC: {pet.microchip}
-                                                        </div>
-                                                    )}
+                                                    <div className="text-sm text-gray-700 mt-2 space-y-1">
+                                                        <div><strong>Species:</strong> {pet.species}</div>
+                                                        {pet.breed && <div><strong>Breed:</strong> {pet.breed}</div>}
+                                                        {pet.sex && <div><strong>Sex:</strong> {pet.sex}</div>}
+                                                        {pet.birthDate && (
+                                                            <div><strong>DOB:</strong> {new Date(pet.birthDate).toLocaleDateString()}</div>
+                                                        )}
+                                                        {pet.microchip && (
+                                                            <div className="text-xs text-gray-500 mt-2">
+                                                                Microchip: {pet.microchip}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div className="flex gap-2">
+                                            </div>
+
+                                            {/* Action Buttons */}
+                                            {!pet.isDeceased && (
+                                                <div className="mt-4 pt-3 border-t border-gray-200 flex flex-wrap gap-2">
                                                     <button
                                                         onClick={() => handleEditPet(pet)}
-                                                        className="text-blue-600 hover:text-blue-800 p-1"
-                                                        title="Edit Pet"
+                                                        className="text-xs text-white bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded font-medium transition-colors"
                                                     >
-                                                        ✏️
+                                                        ✏️ Edit
                                                     </button>
                                                     <button
                                                         onClick={() => handleDeletePet(pet.id)}
-                                                        className="text-red-500 hover:text-red-700 p-1"
-                                                        title="Delete Pet"
-                                                        disabled={pet.isDeceased}
+                                                        className="text-xs text-white bg-gray-600 hover:bg-gray-700 px-3 py-2 rounded font-medium transition-colors"
                                                     >
-                                                        🗑️
+                                                        🗑️ Delete
                                                     </button>
-                                                </div>
-                                            </div>
-
-                                            {/* Deceased Button & Transfer */}
-                                            <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between">
-                                                {!pet.isDeceased && (
                                                     <button
                                                         onClick={() => handleMarkDeceased(pet.id)}
-                                                        className="text-xs text-red-600 hover:text-red-800 hover:underline"
+                                                        className="text-xs text-white bg-red-600 hover:bg-red-700 px-3 py-2 rounded font-medium transition-colors"
                                                     >
-                                                        Mark Deceased
+                                                        ☠️ Mark Deceased
                                                     </button>
-                                                )}
-
-                                                {!pet.isDeceased && (
                                                     <button
                                                         onClick={() => handleInitiateTransfer(pet)}
-                                                        className="text-xs text-orange-600 hover:text-orange-800 hover:underline"
+                                                        className="text-xs text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-2 rounded font-medium transition-colors"
                                                     >
-                                                        Transfer Ownership
+                                                        ⇄ Transfer
                                                     </button>
-                                                )}
-                                            </div>
+                                                </div>
+                                            )}
 
-                                            {/* Transfer Mode UI */}
+                                            {/* Transfer Mode UI for this pet */}
                                             {transferPetId === pet.id && (
-                                                <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded text-sm">
-                                                    <p className="font-semibold text-orange-800 mb-2">Select new owner:</p>
-                                                    <ClientSearchDropdown
-                                                        onClientSelect={(client) => setTargetClient(client)}
-                                                        placeholder="Search new owner..."
-                                                    />
-                                                    {targetClient && (
-                                                        <div className="mt-2 text-green-700 font-medium">
-                                                            Selected: {targetClient.firstName} {targetClient.lastName}
-                                                        </div>
-                                                    )}
-                                                    <div className="flex gap-2 mt-3 justify-end">
+                                                <div className="mt-4 p-4 bg-indigo-50 border border-indigo-200 rounded-md">
+                                                    <h5 className="font-bold text-indigo-900 mb-2">Transfer Ownership</h5>
+                                                    <p className="text-sm text-indigo-700 mb-3">Select the new owner for {pet.name}:</p>
+                                                    <div className="mb-4">
+                                                        <ClientSearchDropdown
+                                                            clients={allClients.filter(c => c.id !== client.id)}
+                                                            selectedClient={targetClient}
+                                                            onSelect={setTargetClient}
+                                                        />
+                                                    </div>
+                                                    <div className="flex justify-end gap-2">
                                                         <button
                                                             onClick={cancelTransfer}
-                                                            className="px-3 py-1 bg-gray-200 rounded text-gray-700 text-xs"
+                                                            className="px-3 py-1 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded text-sm"
+                                                            disabled={saving}
                                                         >
                                                             Cancel
                                                         </button>
                                                         <button
                                                             onClick={handleConfirmTransfer}
+                                                            className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-sm font-bold"
                                                             disabled={!targetClient || saving}
-                                                            className="px-3 py-1 bg-orange-600 text-white rounded text-xs disabled:opacity-50"
                                                         >
-                                                            Confirm Transfer
+                                                            {saving ? 'Transferring...' : 'Confirm Transfer'}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -1031,7 +1036,7 @@ const ClientHistoryModal = ({ client, onClose, token }) => {
         setLoading(true);
         try {
             const response = await api.get(
-                `http://localhost:8080/api/medical-records/client/${client.id}`,
+                `/medical-records/client/${client.id}`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             setRecords(response.data || []);
@@ -1110,7 +1115,7 @@ const ClientHistoryModal = ({ client, onClose, token }) => {
                                         {records.map((record) => (
                                             <tr key={record.id} className="hover:bg-gray-50 transition-colors">
                                                 <td className="px-4 py-3 text-sm text-gray-900">
-                                                    {formatDate(record.appointment?.startTime || record.visitDate || record.createdAt)}
+                                                    {formatDate(record.visitDate || record.createdAt)}
                                                 </td>
                                                 <td className="px-4 py-3 text-sm font-medium text-gray-900">
                                                     {record.patient?.name || 'Unknown'}
@@ -1161,6 +1166,119 @@ const ClientHistoryModal = ({ client, onClose, token }) => {
                 />
             )}
         </>
+    );
+};
+
+// ============================================
+// MEDICAL RECORD MODAL - Edit Record
+// ============================================
+const MedicalRecordModal = ({ record, onClose, onSave, token }) => {
+    const [formData, setFormData] = useState({
+        weight: '',
+        temperature: '',
+        symptoms: '',
+        diagnosis: '',
+        treatment: ''
+    });
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        if (record) {
+            setFormData({
+                weight: record.weight || '',
+                temperature: record.temperature || '',
+                symptoms: record.symptoms || '',
+                diagnosis: record.diagnosis || '',
+                treatment: record.treatment || ''
+            });
+        }
+    }, [record]);
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        try {
+            const payload = {
+                id: record.id,
+                weight: parseFloat(formData.weight),
+                temperature: parseFloat(formData.temperature),
+                symptoms: formData.symptoms,
+                diagnosis: formData.diagnosis,
+                treatment: formData.treatment
+            };
+
+            await api.put(
+                `/medical-records/${record.id}`,
+                payload,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            onSave();
+        } catch (error) {
+            console.error('Error updating record:', error);
+            alert('Failed to update medical record.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000] p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-8">
+                <div className="px-8 py-5 border-b border-gray-200 flex justify-between items-center bg-gray-50 mb-6 -mx-8 -mt-8 rounded-t-lg">
+                    <h2 className="text-2xl font-bold text-gray-900">Edit Medical Record</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl font-bold">×</button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="py-2 overflow-y-auto flex-1 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
+                            <input type="number" name="weight" value={formData.weight} onChange={handleChange} className="w-full border border-gray-300 rounded-md px-3 py-2" step="0.1" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Temperature (°C)</label>
+                            <input type="number" name="temperature" value={formData.temperature} onChange={handleChange} className="w-full border border-gray-300 rounded-md px-3 py-2" step="0.1" />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Symptoms</label>
+                        <textarea name="symptoms" value={formData.symptoms} onChange={handleChange} rows="3" className="w-full border border-gray-300 rounded-md px-3 py-2 resize-none" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Diagnosis</label>
+                        <textarea name="diagnosis" value={formData.diagnosis} onChange={handleChange} rows="3" className="w-full border border-gray-300 rounded-md px-3 py-2 resize-none" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Treatment</label>
+                        <textarea name="treatment" value={formData.treatment} onChange={handleChange} rows="3" className="w-full border border-gray-300 rounded-md px-3 py-2 resize-none" />
+                    </div>
+
+                    <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-100">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md font-bold transition-colors"
+                            disabled={saving}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-bold transition-colors"
+                            disabled={saving}
+                        >
+                            {saving ? 'Saving...' : 'Save Changes'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     );
 };
 

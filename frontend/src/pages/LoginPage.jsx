@@ -16,7 +16,7 @@ const LoginPage = () => {
 
     try {
       // Perform the actual API call to login
-      const response = await api.post('/api/auth/login', { username, password });
+      const response = await api.post('/auth/login', { username, password });
 
       // Expecting response.data to contain { token: "...", user: { ... } }
       // Adjust based on actual backend response structure.

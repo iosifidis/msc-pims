@@ -23,51 +23,58 @@ import com.pims.backend.security.JwtAuthenticationEntryPoint;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthFilter;
-    private final AuthenticationProvider authenticationProvider;
-    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+        private final JwtAuthenticationFilter jwtAuthFilter;
+        private final AuthenticationProvider authenticationProvider;
+        private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter,
-            AuthenticationProvider authenticationProvider,
-            JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint) {
-        this.jwtAuthFilter = jwtAuthFilter;
-        this.authenticationProvider = authenticationProvider;
-        this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
-    }
+        public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter,
+                        AuthenticationProvider authenticationProvider,
+                        JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint) {
+                this.jwtAuthFilter = jwtAuthFilter;
+                this.authenticationProvider = authenticationProvider;
+                this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
+        }
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/auth/**").permitAll() // CRITICAL: Allows Login/Register
-                        .requestMatchers("/error").permitAll()
-                        .requestMatchers("/api/clients/**").authenticated() // Explicitly allowed for debugging
-                        .requestMatchers("/api/patients/**").authenticated()
-                        .requestMatchers("/api/dashboard/**").authenticated()
-                        .anyRequest().authenticated())
-                .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint(jwtAuthenticationEntryPoint))
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authenticationProvider(authenticationProvider)
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+        @Bean
+        public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+                http
+                                // .csrf(AbstractHttpConfigurer::disable)
+                                .csrf(csrf -> csrf
+                                                .ignoringRequestMatchers("/api/**") // ← ΑΥΤΟ ΕΔΩ
+                                )
+                                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                                .authorizeHttpRequests(auth -> auth
+                                                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                                                .requestMatchers("/api/auth/**").permitAll() // CRITICAL: Allows
+                                                                                             // Login/Register
+                                                .requestMatchers("/error").permitAll()
+                                                .requestMatchers("/api/clients/**").authenticated() // Explicitly
+                                                                                                    // allowed for
+                                                                                                    // debugging
+                                                .requestMatchers("/api/patients/**").authenticated()
+                                                .requestMatchers("/api/dashboard/**").authenticated()
+                                                .anyRequest().authenticated())
+                                .exceptionHandling(exception -> exception
+                                                .authenticationEntryPoint(jwtAuthenticationEntryPoint))
+                                .sessionManagement(session -> session
+                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                .authenticationProvider(authenticationProvider)
+                                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
-        return http.build();
-    }
+                return http.build();
+        }
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(true);
+        @Bean
+        public CorsConfigurationSource corsConfigurationSource() {
+                CorsConfiguration configuration = new CorsConfiguration();
+                configuration.setAllowedOrigins(List.of("http://localhost:5173", "https://iosifidis.hopto.org",
+                                "http://localhost:80", "http://localhost"));
+                configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+                configuration.setAllowedHeaders(List.of("*"));
+                configuration.setAllowCredentials(true);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
-    }
+                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+                source.registerCorsConfiguration("/**", configuration);
+                return source;
+        }
 }

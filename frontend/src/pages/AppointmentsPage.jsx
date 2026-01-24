@@ -6,7 +6,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import api from '../context/axiosConfig';
 import { useAuth } from '../context/AuthContext';
 
-const API_BASE_URL = 'http://localhost:8080/api';
+// const API_BASE_URL = 'http://localhost:8080/api';
 
 const APPOINTMENT_TYPES = [
     { value: 'EXAM', label: 'Exam', color: '#3b82f6' },
@@ -197,7 +197,7 @@ const PatientHistoryModal = ({ patient, onClose, onViewRecord, onEditRecord, tok
 
     useEffect(() => {
         if (patient?.id) {
-            api.get(`${API_BASE_URL}/medical-records/patient/${patient.id}`, {
+            api.get(`/medical-records/patient/${patient.id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             })
                 .then(res => setRecords(res.data))
@@ -520,7 +520,7 @@ const AppointmentsPage = () => {
     const fetchAppointments = useCallback(async () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const response = await api.get(`${API_BASE_URL}/appointments`, config);
+            const response = await api.get(`/appointments`, config);
             const formattedEvents = response.data.map(appt => {
                 const typeConfig = APPOINTMENT_TYPES.find(t => t.value === appt.type) || APPOINTMENT_TYPES[0];
 
@@ -570,7 +570,7 @@ const AppointmentsPage = () => {
     const fetchClients = useCallback(async () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const response = await api.get(`${API_BASE_URL}/clients`, config);
+            const response = await api.get(`/clients`, config);
             setClients(response.data);
         } catch (error) {
             setClients([]);
@@ -580,7 +580,7 @@ const AppointmentsPage = () => {
     const fetchVets = useCallback(async () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const response = await api.get(`${API_BASE_URL}/users/vets`, config);
+            const response = await api.get(`/users/vets`, config);
             setVets(response.data);
         } catch (error) {
             setVets([]);
@@ -608,7 +608,7 @@ const AppointmentsPage = () => {
         setPatientsLoading(true);
         try {
             // FIX: Use the correct endpoint matching ClientsPage
-            const response = await api.get(`${API_BASE_URL}/patients/owner/${clientId}`, {
+            const response = await api.get(`/patients/owner/${clientId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setPatients(response.data);
@@ -813,7 +813,7 @@ const AppointmentsPage = () => {
         });
 
         try {
-            await api.put(`${API_BASE_URL}/appointments/${event.id}`, payload, {
+            await api.put(`/appointments/${event.id}`, payload, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             alert('Appointment moved!');
@@ -904,10 +904,10 @@ const AppointmentsPage = () => {
 
             if (selectedAppointment?.id) {
                 // Update existing
-                await api.put(`${API_BASE_URL}/appointments/${selectedAppointment.id}`, payload, config);
+                await api.put(`/appointments/${selectedAppointment.id}`, payload, config);
             } else {
                 // Create new
-                await api.post(`${API_BASE_URL}/appointments`, payload, config);
+                await api.post(`/appointments`, payload, config);
             }
 
             setShowModal(false);
@@ -928,7 +928,7 @@ const AppointmentsPage = () => {
 
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await api.delete(`${API_BASE_URL}/appointments/${selectedAppointment.id}`, config);
+            await api.delete(`/appointments/${selectedAppointment.id}`, config);
             setShowModal(false);
             resetForm();
             fetchAppointments();
@@ -946,7 +946,7 @@ const AppointmentsPage = () => {
 
             // Step 1: Call generic API to update status to IN_PROGRESS
             const payload = formatPayload(selectedAppointment, { status: 'IN_PROGRESS' });
-            await api.put(`${API_BASE_URL}/appointments/${selectedAppointment.id}`, payload, config);
+            await api.put(`/appointments/${selectedAppointment.id}`, payload, config);
 
             // Step 2 & 3: Close AppointmentModal and Open ExamModal
             setExamInitialData(null);
@@ -968,7 +968,7 @@ const AppointmentsPage = () => {
         if (!selectedAppointment?.id) return;
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const response = await api.get(`${API_BASE_URL}/medical-records/appointment/${selectedAppointment.id}`, config);
+            const response = await api.get(`/medical-records/appointment/${selectedAppointment.id}`, config);
 
             setExamInitialData(response.data);
             setExamAppointment(selectedAppointment);
@@ -1014,7 +1014,7 @@ const AppointmentsPage = () => {
             };
 
             // POST /api/medical-records
-            await api.post(`${API_BASE_URL}/medical-records`, payload, config);
+            await api.post(`/medical-records`, payload, config);
 
             setShowExamModal(false);
             setExamAppointment(null);
@@ -1086,7 +1086,7 @@ const AppointmentsPage = () => {
                 treatment: examData.treatment
             };
 
-            await api.put(`${API_BASE_URL}/medical-records/${examInitialData.id}`, payload, config);
+            await api.put(`/medical-records/${examInitialData.id}`, payload, config);
 
             setShowExamModal(false);
             setShowHistoryModal(true); // Return to history list

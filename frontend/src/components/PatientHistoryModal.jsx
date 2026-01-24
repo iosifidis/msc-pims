@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../context/axiosConfig';
 
-const API_BASE_URL = 'http://localhost:8080/api';
+//const API_BASE_URL = 'http://localhost:8080/api';
 
 const PatientHistoryModal = ({ patient, onClose, onViewRecord, onEditRecord, token }) => {
     const [records, setRecords] = useState([]);
@@ -10,11 +10,14 @@ const PatientHistoryModal = ({ patient, onClose, onViewRecord, onEditRecord, tok
     useEffect(() => {
         if (patient?.id) {
             setLoading(true);
-            axios.get(`${API_BASE_URL}/medical-records/patient/${patient.id}`, {
+            api.get(`/medical-records/patient/${patient.id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             })
-                .then(res => setRecords(res.data))
-                .catch(err => console.error("Error fetching history:", err))
+                .then(res => setRecords(Array.isArray(res.data) ? res.data : []))
+                .catch(err => {
+                    console.error("Error fetching history:", err);
+                    setRecords([]);
+                })
                 .finally(() => setLoading(false));
         }
     }, [patient, token]);

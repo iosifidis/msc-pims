@@ -24,7 +24,7 @@ const UsersPage = () => {
 
     const fetchUsers = async () => {
         try {
-            const response = await api.get('http://localhost:8080/api/users', {
+            const response = await api.get('/users', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setUsers(response.data || []);
@@ -47,7 +47,7 @@ const UsersPage = () => {
         }
 
         try {
-            await api.delete(`http://localhost:8080/api/users/${userId}`, {
+            await api.delete(`/users/${userId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setUsers(users.filter(u => u.id !== userId));
@@ -86,8 +86,8 @@ const UsersPage = () => {
                                 <td className="px-6 py-4 text-sm text-gray-500">{u.email}</td>
                                 <td className="px-6 py-4 text-sm text-gray-500">
                                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${u.role === 'ADMIN' || u.role === 'ROLE_ADMIN'
-                                            ? 'bg-purple-100 text-purple-800'
-                                            : 'bg-blue-100 text-blue-800'
+                                        ? 'bg-purple-100 text-purple-800'
+                                        : 'bg-blue-100 text-blue-800'
                                         }`}>
                                         {u.role}
                                     </span>

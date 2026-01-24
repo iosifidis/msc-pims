@@ -1,0 +1,3 @@
+iosifidis.hopto.org {
+    reverse_proxy pims_frontend:80
+}

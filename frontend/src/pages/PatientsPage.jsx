@@ -58,7 +58,7 @@ const PatientsPage = () => {
             // OR use /api/patients if it exists.
 
             // Let's try to fetch clients and extract pets to ensure we have owner info which is crucial for search.
-            const response = await api.get('http://localhost:8080/api/clients', {
+            const response = await api.get('/clients', {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
