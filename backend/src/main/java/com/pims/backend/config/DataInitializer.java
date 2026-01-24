@@ -36,11 +36,11 @@ public class DataInitializer implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
 
     public DataInitializer(AppUserRepository appUserRepository,
-                           RoleRepository roleRepository,
-                           ClientRepository clientRepository,
-                           PatientRepository patientRepository,
-                           AppointmentRepository appointmentRepository,
-                           PasswordEncoder passwordEncoder) {
+            RoleRepository roleRepository,
+            ClientRepository clientRepository,
+            PatientRepository patientRepository,
+            AppointmentRepository appointmentRepository,
+            PasswordEncoder passwordEncoder) {
         this.appUserRepository = appUserRepository;
         this.roleRepository = roleRepository;
         this.clientRepository = clientRepository;
@@ -58,7 +58,7 @@ public class DataInitializer implements CommandLineRunner {
 
         // 1. Create Roles
         Role vetRole = new Role();
-        vetRole.setName("ROLE_VET");
+        vetRole.setName("VET");
         vetRole.setPermissions(new HashSet<>(Set.of("READ_PATIENT", "WRITE_PATIENT", "CREATE_APPOINTMENT")));
         roleRepository.save(vetRole);
 
